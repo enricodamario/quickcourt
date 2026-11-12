@@ -8,22 +8,31 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Booking;
+use App\Models\BookingSlot;
 use App\Models\Lapangan;
 use Illuminate\Support\Facades\Route;
 
-// Halaman depan: tamu melihat halaman QuickCourt + login, yang sudah login langsung ke aplikasi.
+// Halaman depan: tamu melihat halaman login QuickCourt, yang sudah login langsung ke aplikasi.
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
 
-    $daftarLapangan = Lapangan::with('jenis')
-        ->where('status', 'aktif')
-        ->orderBy('nama')
-        ->take(4)
-        ->get();
+    Booking::bersihkanKedaluwarsa();
 
-    return view('welcome', compact('daftarLapangan'));
+    // Hitung jumlah jam yang masih kosong hari ini di semua lapangan aktif
+    $lapanganAktif = Lapangan::where('status', 'aktif')->pluck('id');
+    $jamMulai = max(Lapangan::JAM_BUKA, now()->hour + 1);
+    $semuaJam = max(0, Lapangan::JAM_TUTUP - $jamMulai) * $lapanganAktif->count();
+
+    $jamTerisi = BookingSlot::whereIn('lapangan_id', $lapanganAktif)
+        ->where('tanggal', today()->toDateString())
+        ->where('jam', '>=', $jamMulai)
+        ->count();
+
+    $jamTersedia = max(0, $semuaJam - $jamTerisi);
+
+    return view('auth.login', compact('jamTersedia'));
 })->name('home');
 
 // Ganti bahasa (EN / ID). Bisa dipakai tamu maupun yang sudah login.

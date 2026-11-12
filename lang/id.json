@@ -87,5 +87,31 @@
     "Pick at least one hour.": "Pilih minimal 1 jam.",
     "Max. :max hours per booking.": "Maks. :max jam per booking.",
     "Hours must be in a row, e.g. 19:00 and 20:00.": "Jam harus berturut-turut, misalnya 19:00 dan 20:00.",
-    "The hour you picked has already passed.": "Jam yang kamu pilih sudah lewat."
+    "The hour you picked has already passed.": "Jam yang kamu pilih sudah lewat.",
+
+    "Book a court in": "Booking lapangan dalam hitungan",
+    "seconds.": "detik.",
+    "See live availability, lock your hours, and pay before anyone else grabs them.": "Cek jadwal kosong secara langsung, amankan jam pilihanmu, dan bayar sebelum diambil orang lain.",
+    ":count slots open today": ":count jam tersedia hari ini",
+    "Welcome back": "Selamat datang kembali",
+    "Email": "Email",
+    "Password": "Kata sandi",
+    "Forgot password?": "Lupa kata sandi?",
+    "Remember me": "Ingat saya",
+    "Log in": "Masuk",
+    "New here?": "Baru di sini?",
+    "Create an account": "Buat akun",
+    "Demo accounts": "Akun demo",
+
+    "Create your account": "Buat akunmu",
+    "Start booking courts in minutes.": "Mulai booking lapangan dalam hitungan menit.",
+    "Name": "Nama",
+    "Confirm password": "Konfirmasi kata sandi",
+    "Sign up": "Daftar",
+    "Already have an account?": "Sudah punya akun?",
+
+    "Reset your password": "Atur ulang kata sandi",
+    "Enter your email and we'll send you a link to set a new password.": "Masukkan emailmu, kami akan mengirim link untuk membuat kata sandi baru.",
+    "Send reset link": "Kirim link reset",
+    "Back to log in": "Kembali ke halaman masuk"
 }
