@@ -9,5 +9,18 @@
     "Profile": "Profil",
     "Log Out": "Keluar",
     "Main menu": "Menu utama",
-    "Language": "Bahasa"
+    "Language": "Bahasa",
+
+    "Hi, :name": "Hai, :name",
+    "Let's play": "Ayo main",
+    "Search courts": "Cari lapangan",
+    "Filter by sport": "Filter jenis olahraga",
+    "All": "Semua",
+    "Book now": "Booking sekarang",
+    "hour": "jam",
+    "Available today": "Tersedia hari ini",
+    "Unavailable today": "Tidak tersedia hari ini",
+    "See other dates": "Lihat jadwal lain",
+    "No courts match your search.": "Tidak ada lapangan yang cocok dengan pencarianmu.",
+    "Clear filters": "Hapus filter"
 }
