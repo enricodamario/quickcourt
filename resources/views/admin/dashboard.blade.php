@@ -23,6 +23,14 @@
                     <p class="text-3xl font-bold text-gray-900">{{ $bookingHariIni }}</p>
                 </div>
             </div>
+
+                        <div class="mt-6">
+                <a href="{{ route('admin.lapangan.index') }}"
+                   class="inline-flex items-center px-4 py-2 bg-gray-800 rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                    Kelola Lapangan
+                </a>
+            </div>
+            
         </div>
     </div>
 </x-app-layout>

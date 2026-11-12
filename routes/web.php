@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\LapanganController;
 use App\Models\Booking;
 use App\Models\Lapangan;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,8 @@ Route::middleware(['auth', 'admin'])
                 'bookingHariIni' => Booking::whereDate('tanggal', today())->count(),
             ]);
         })->name('dashboard');
+
+        Route::resource('lapangan', LapanganController::class)->except('show');
     });
 
 Route::middleware('auth')->group(function () {

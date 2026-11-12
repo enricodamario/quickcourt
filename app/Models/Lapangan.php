@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Lapangan extends Model
 {
     protected $table = 'lapangan';
+    public const JENIS = ['futsal', 'badminton', 'basket', 'padel', 'voli', 'mini soccer', 'tennis'];
 
     protected $fillable = [
         'nama',
