@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -38,5 +39,14 @@ class User extends Authenticatable
         public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+        public function initials(): string
+    {
+        return Str::of($this->name)
+            ->explode(' ')
+            ->filter()
+            ->take(2)
+            ->map(fn ($kata) => Str::upper(Str::substr($kata, 0, 1)))
+            ->implode('');
     }
 }

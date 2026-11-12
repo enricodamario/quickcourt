@@ -6,13 +6,34 @@ use App\Http\Controllers\Admin\LapanganController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Middleware\SetLocale;
 use App\Models\Booking;
 use App\Models\Lapangan;
 use Illuminate\Support\Facades\Route;
 
+// Halaman depan: tamu melihat halaman QuickCourt + login, yang sudah login langsung ke aplikasi.
 Route::get('/', function () {
-    return view('welcome');
-});
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    $daftarLapangan = Lapangan::with('jenis')
+        ->where('status', 'aktif')
+        ->orderBy('nama')
+        ->take(4)
+        ->get();
+
+    return view('welcome', compact('daftarLapangan'));
+})->name('home');
+
+// Ganti bahasa (EN / ID). Bisa dipakai tamu maupun yang sudah login.
+Route::get('/language/{locale}', function (string $locale) {
+    abort_unless(in_array($locale, SetLocale::BAHASA, true), 404);
+
+    session(['locale' => $locale]);
+
+    return back();
+})->name('language.switch');
 
 // Pengarah setelah login: admin ke dashboard admin, customer ke daftar lapangan.
 Route::get('/dashboard', function () {
