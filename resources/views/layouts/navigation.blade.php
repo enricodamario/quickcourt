@@ -15,14 +15,21 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    @unless (Auth::user()->isAdmin())
-                 <x-nav-link :href="route('lapangan.index')" :active="request()->routeIs('lapangan.*')">
-                    Lapangan
-                 </x-nav-link>
-                <x-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.*')">
-                    Booking Saya
-                 </x-nav-link>
-                @endunless
+                   @if (Auth::user()->isAdmin())
+    <x-nav-link :href="route('admin.lapangan.index')" :active="request()->routeIs('admin.lapangan.*')">
+        Lapangan
+    </x-nav-link>
+    <x-nav-link :href="route('admin.booking.index')" :active="request()->routeIs('admin.booking.*')">
+        Booking
+    </x-nav-link>
+@else
+    <x-nav-link :href="route('lapangan.index')" :active="request()->routeIs('lapangan.*')">
+        Lapangan
+    </x-nav-link>
+    <x-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.*')">
+        Booking Saya
+    </x-nav-link>
+@endif
                 </div>
             </div>
 
@@ -78,14 +85,21 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            @unless (Auth::user()->isAdmin())
+  @if (Auth::user()->isAdmin())
+    <x-responsive-nav-link :href="route('admin.lapangan.index')" :active="request()->routeIs('admin.lapangan.*')">
+        Lapangan
+    </x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('admin.booking.index')" :active="request()->routeIs('admin.booking.*')">
+        Booking
+    </x-responsive-nav-link>
+@else
     <x-responsive-nav-link :href="route('lapangan.index')" :active="request()->routeIs('lapangan.*')">
         Lapangan
     </x-responsive-nav-link>
     <x-responsive-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.*')">
         Booking Saya
     </x-responsive-nav-link>
-@endunless
+@endif
         </div>
 
         <!-- Responsive Settings Options -->

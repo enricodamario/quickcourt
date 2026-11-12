@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\LapanganController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\JadwalController;
@@ -29,16 +30,20 @@ Route::middleware(['auth', 'admin'])
         Route::get('/dashboard', function () {
             Booking::bersihkanKedaluwarsa();
 
+            $lunasHariIni = Booking::whereDate('tanggal', today())->where('status', 'dikonfirmasi');
+
             return view('admin.dashboard', [
-                'jumlahLapangan' => Lapangan::count(),
-                'bookingPending' => Booking::where('status', 'menunggu_pembayaran')->count(),
-                'bookingHariIni' => Booking::whereDate('tanggal', today())
-                    ->where('status', 'dikonfirmasi')
-                    ->count(),
+                'jumlahLapangan' => Lapangan::where('status', 'aktif')->count(),
+                'menungguPembayaran' => Booking::where('status', 'menunggu_pembayaran')->count(),
+                'bookingHariIni' => (clone $lunasHariIni)->count(),
+                'pendapatanHariIni' => (clone $lunasHariIni)->sum('total_harga'),
             ]);
         })->name('dashboard');
 
         Route::resource('lapangan', LapanganController::class)->except('show');
+
+        Route::get('/booking', [AdminBookingController::class, 'index'])->name('booking.index');
+        Route::patch('/booking/{booking}/batalkan', [AdminBookingController::class, 'batalkan'])->name('booking.batalkan');
     });
 
 // Halaman customer: wajib login.
