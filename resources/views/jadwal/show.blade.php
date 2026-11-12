@@ -16,8 +16,12 @@
                 · {{ ucfirst($lapangan->jenis) }}
             </p>
 
-            @if ($errors->has('tanggal'))
-                <div class="p-4 rounded-md bg-red-50 text-red-800">{{ $errors->first('tanggal') }}</div>
+            @if ($errors->any())
+                <div class="p-4 rounded-md bg-red-50 text-red-800 space-y-1">
+                    @foreach ($errors->all() as $pesan)
+                        <p>{{ $pesan }}</p>
+                    @endforeach
+                </div>
             @endif
 
             {{-- Pilih tanggal --}}
@@ -37,12 +41,16 @@
                 </div>
             </div>
 
-            {{-- Grid jam --}}
-            <div>
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <p class="text-sm font-semibold text-gray-800">Jadwal</p>
+            {{-- Grid jam: form untuk memilih jam --}}
+            <form method="GET" action="{{ route('booking.create') }}" x-data="{ dipilih: [] }" class="space-y-4">
+                <input type="hidden" name="lapangan_id" value="{{ $lapangan->id }}">
+                <input type="hidden" name="tanggal" value="{{ $tanggal->toDateString() }}">
+
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-sm font-semibold text-gray-800">Pilih jam (berurutan, maks. 4 jam)</p>
                     <div class="flex gap-4 text-xs text-gray-600">
                         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-white border border-gray-400"></span>Tersedia</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-700"></span>Dipilih</span>
                         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-200"></span>Penuh / lewat</span>
                     </div>
                 </div>
@@ -50,9 +58,14 @@
                 <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     @foreach ($slots as $slot)
                         @if ($slot['status'] === 'tersedia')
-                            <div class="h-12 flex items-center justify-center rounded-lg border border-gray-400 bg-white text-gray-900 font-medium">
-                                {{ $slot['label'] }}
-                            </div>
+                            <label class="cursor-pointer">
+                                <input type="checkbox" name="jam[]" value="{{ $slot['jam'] }}" x-model="dipilih" class="peer sr-only">
+                                <span class="h-12 flex items-center justify-center rounded-lg border border-gray-400 bg-white text-gray-900 font-medium
+                                             peer-checked:bg-blue-700 peer-checked:border-blue-700 peer-checked:text-white
+                                             peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500">
+                                    {{ $slot['label'] }}
+                                </span>
+                            </label>
                         @else
                             <div class="h-12 flex flex-col items-center justify-center rounded-lg bg-gray-200 text-gray-500">
                                 <span class="line-through">{{ $slot['label'] }}</span>
@@ -61,7 +74,21 @@
                         @endif
                     @endforeach
                 </div>
-            </div>
+
+                {{-- Ringkasan + tombol lanjut --}}
+                <div class="flex items-center justify-between gap-4 bg-white rounded-lg shadow-sm p-4">
+                    <div>
+                        <p class="text-sm text-gray-500"
+                           x-text="dipilih.length ? dipilih.length + ' jam dipilih' : 'Belum ada jam dipilih'">Belum ada jam dipilih</p>
+                        <p class="text-xl font-bold text-gray-900"
+                           x-text="'Rp ' + (dipilih.length * {{ $lapangan->harga_per_jam }}).toLocaleString('id-ID')">Rp 0</p>
+                    </div>
+                    <button type="submit" :disabled="dipilih.length === 0"
+                            class="px-6 py-3 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Lanjutkan
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </x-app-layout>

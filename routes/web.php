@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\LapanganController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\ProfileController;
 use App\Models\Booking;
@@ -40,6 +41,11 @@ Route::middleware(['auth', 'admin'])
 Route::middleware('auth')->group(function () {
     Route::get('/lapangan', [JadwalController::class, 'index'])->name('lapangan.index');
     Route::get('/lapangan/{lapangan}', [JadwalController::class, 'show'])->name('lapangan.show');
+
+    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+    Route::get('/booking/konfirmasi', [BookingController::class, 'create'])->name('booking.create');
+    Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
+    Route::patch('/booking/{booking}/batal', [BookingController::class, 'batal'])->name('booking.batal');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

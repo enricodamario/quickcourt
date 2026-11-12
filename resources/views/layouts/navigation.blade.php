@@ -15,6 +15,14 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @unless (Auth::user()->isAdmin())
+                 <x-nav-link :href="route('lapangan.index')" :active="request()->routeIs('lapangan.*')">
+                    Lapangan
+                 </x-nav-link>
+                <x-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.*')">
+                    Booking Saya
+                 </x-nav-link>
+                @endunless
                 </div>
             </div>
 
@@ -70,6 +78,14 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @unless (Auth::user()->isAdmin())
+    <x-responsive-nav-link :href="route('lapangan.index')" :active="request()->routeIs('lapangan.*')">
+        Lapangan
+    </x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('booking.index')" :active="request()->routeIs('booking.*')">
+        Booking Saya
+    </x-responsive-nav-link>
+@endunless
         </div>
 
         <!-- Responsive Settings Options -->

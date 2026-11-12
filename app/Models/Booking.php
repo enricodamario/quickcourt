@@ -40,4 +40,9 @@ class Booking extends Model
     {
         return $this->hasMany(BookingSlot::class);
     }
+
+        public function bisaDibatalkan(): bool
+    {
+        return $this->status !== 'dibatalkan' && $this->tanggal->gte(today());
+    }
 }
