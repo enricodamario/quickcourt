@@ -69,7 +69,7 @@
                             <tr>
                                 <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                                     {{ $booking->tanggal->translatedFormat('D, d M Y') }}<br>
-                                    <span class="text-gray-500">{{ substr($booking->jam_mulai, 0, 5) }}–{{ substr($booking->jam_selesai, 0, 5) }}</span>
+                                    <span class="text-gray-500">{{ $booking->rentangJam() }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $booking->lapangan->nama }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900">

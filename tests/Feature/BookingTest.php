@@ -67,17 +67,17 @@ class BookingTest extends TestCase
         $this->assertSame(100000, Booking::first()->total_harga);
     }
 
-    public function test_jam_harus_berurutan(): void
+       public function test_jam_boleh_tidak_berurutan(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)
-            ->post(route('booking.store'), $this->dataBooking([10, 12]))
-            ->assertSessionHasErrors('jam');
+        $this->actingAs($user)->post(route('booking.store'), $this->dataBooking([10, 11, 19]));
 
-        $this->assertSame(0, Booking::count());
+        $booking = Booking::first();
+        $this->assertSame('10:00–12:00, 19:00–20:00', $booking->rentang_jam);
+        $this->assertSame(300000, $booking->total_harga);
+        $this->assertSame(3, BookingSlot::count());
     }
-
     public function test_maksimal_dua_booking_belum_dibayar(): void
     {
         $user = User::factory()->create();

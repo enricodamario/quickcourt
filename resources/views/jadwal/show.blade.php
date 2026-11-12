@@ -61,7 +61,14 @@
                   if (this.dipilih.length === 0) return this.teks.none;
                   const j = this.dipilih.map(Number).sort((a, b) => a - b);
                   const durasi = j.length === 1 ? this.teks.one : this.teks.many.replace(':count', j.length);
-                  return durasi + ' · ' + this.jam(j[0]) + '–' + this.jam(j[j.length - 1] + 1);
+                  const rentang = [];
+                  let mulai = j[0], akhir = j[0];
+                  for (let i = 1; i < j.length; i++) {
+                      if (j[i] === akhir + 1) { akhir = j[i]; }
+                      else { rentang.push(this.jam(mulai) + '–' + this.jam(akhir + 1)); mulai = j[i]; akhir = j[i]; }
+                  }
+                  rentang.push(this.jam(mulai) + '–' + this.jam(akhir + 1));
+                  return durasi + ' · ' + rentang.join(', ');
               },
               get total() { return 'Rp ' + (this.dipilih.length * this.harga).toLocaleString('id-ID') }
           }"
@@ -79,10 +86,7 @@
         @endif
 
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h2 class="text-base font-bold">{{ __('Pick your hours') }}</h2>
-                <p class="text-xs text-muted">{{ __('Max. 4 hours in a row') }}</p>
-            </div>
+            <h2 class="text-base font-bold">{{ __('Pick your hours') }}</h2>
             <div class="flex gap-3 text-xs text-muted">
                 <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-white border border-gray-400"></span>{{ __('Available') }}</span>
                 <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-ink"></span>{{ __('Selected') }}</span>

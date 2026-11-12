@@ -35,7 +35,7 @@
 
         @forelse ($bookings as $booking)
             @php
-                $jam = substr($booking->jam_mulai, 0, 5) . ' – ' . substr($booking->jam_selesai, 0, 5);
+                $jam = $booking->rentangJam();
                 $kode = 'QC-' . str_pad($booking->id, 5, '0', STR_PAD_LEFT);
             @endphp
 

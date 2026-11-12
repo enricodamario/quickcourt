@@ -14,7 +14,6 @@ use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
-    public const MAKS_JAM = 4;
     public const MAKS_BELUM_BAYAR = 2;
 
     // Halaman "Booking saya", dengan tab Upcoming dan Past
@@ -95,6 +94,7 @@ class BookingController extends Controller
                     'tanggal' => $tanggal->toDateString(),
                     'jam_mulai' => sprintf('%02d:00', $jamList[0]),
                     'jam_selesai' => sprintf('%02d:00', $jamList[count($jamList) - 1] + 1),
+                    'rentang_jam' => Booking::susunRentang($jamList),
                     'total_harga' => $lapangan->harga_per_jam * count($jamList),
                     'status' => 'menunggu_pembayaran',
                     'batas_bayar' => now()->addMinutes(Booking::BATAS_BAYAR_MENIT),
@@ -205,25 +205,17 @@ class BookingController extends Controller
         $data = $request->validate([
             'lapangan_id' => ['required', 'integer', Rule::exists('lapangan', 'id')->where('status', 'aktif')],
             'tanggal' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', 'before_or_equal:' . $hariTerakhir],
-            'jam' => ['required', 'array', 'min:1', 'max:' . self::MAKS_JAM],
+            'jam' => ['required', 'array', 'min:1'],
             'jam.*' => ['integer', 'distinct', 'min:' . Lapangan::JAM_BUKA, 'max:' . (Lapangan::JAM_TUTUP - 1)],
         ], [
             'jam.required' => __('Pick at least one hour.'),
-            'jam.max' => __('Max. :max hours per booking.', ['max' => self::MAKS_JAM]),
         ]);
 
         $jamList = collect($data['jam'])->map(fn ($jam) => (int) $jam)->sort()->values()->all();
 
-        for ($i = 1; $i < count($jamList); $i++) {
-            if ($jamList[$i] !== $jamList[$i - 1] + 1) {
-                throw ValidationException::withMessages([
-                    'jam' => __('Hours must be in a row, e.g. 19:00 and 20:00.'),
-                ]);
-            }
-        }
-
         $tanggal = Carbon::parse($data['tanggal']);
 
+        // Jam sudah diurutkan, jadi cukup cek jam paling awal
         if ($tanggal->isToday() && $jamList[0] <= now()->hour) {
             throw ValidationException::withMessages([
                 'jam' => __('The hour you picked has already passed.'),

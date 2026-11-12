@@ -26,7 +26,6 @@
 
     "Back": "Kembali",
     "Pick your hours": "Pilih jam",
-    "Max. 4 hours in a row": "Maks. 4 jam berturut-turut",
     "Available": "Tersedia",
     "Selected": "Dipilih",
     "Booked": "Penuh",
@@ -85,8 +84,6 @@
     "You still have an unpaid booking. Pay or cancel it before making a new one.": "Kamu masih punya booking yang belum dibayar. Bayar atau batalkan dulu sebelum membuat booking baru.",
     "Sorry, someone just booked that time. Please pick another one.": "Maaf, jam itu baru saja dibooking orang lain. Silakan pilih jam lain.",
     "Pick at least one hour.": "Pilih minimal 1 jam.",
-    "Max. :max hours per booking.": "Maks. :max jam per booking.",
-    "Hours must be in a row, e.g. 19:00 and 20:00.": "Jam harus berturut-turut, misalnya 19:00 dan 20:00.",
     "The hour you picked has already passed.": "Jam yang kamu pilih sudah lewat.",
 
     "Book a court in": "Booking lapangan dalam hitungan",

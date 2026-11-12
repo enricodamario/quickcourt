@@ -23,6 +23,7 @@ class Booking extends Model
         'tanggal',
         'jam_mulai',
         'jam_selesai',
+        'rentang_jam',
         'total_harga',
         'status',
         'batas_bayar',
@@ -58,6 +59,35 @@ class Booking extends Model
     public function bisaDibatalkan(): bool
     {
         return $this->status === 'menunggu_pembayaran';
+    }
+
+    // Teks rentang jam untuk ditampilkan, misalnya "10:00–12:00, 19:00–20:00"
+    public function rentangJam(): string
+    {
+        return $this->rentang_jam
+            ?? substr($this->jam_mulai, 0, 5) . '–' . substr($this->jam_selesai, 0, 5);
+    }
+
+    // Menyusun daftar jam menjadi teks rentang. Contoh: [10, 11, 19] → "10:00–12:00, 19:00–20:00"
+    public static function susunRentang(array $daftarJam): string
+    {
+        sort($daftarJam);
+
+        $rentang = [];
+        $mulai = $akhir = $daftarJam[0];
+
+        foreach (array_slice($daftarJam, 1) as $jam) {
+            if ($jam === $akhir + 1) {
+                $akhir = $jam;
+            } else {
+                $rentang[] = sprintf('%02d:00–%02d:00', $mulai, $akhir + 1);
+                $mulai = $akhir = $jam;
+            }
+        }
+
+        $rentang[] = sprintf('%02d:00–%02d:00', $mulai, $akhir + 1);
+
+        return implode(', ', $rentang);
     }
 
     // Ubah booking yang lewat batas bayar menjadi kedaluwarsa, lalu buka kembali jadwalnya.

@@ -67,7 +67,7 @@
                 <span class="text-muted">{{ __('Schedule') }}</span>
                 <span class="font-semibold text-right">
                     {{ $booking->tanggal->translatedFormat('D, d M') }}
-                    · {{ substr($booking->jam_mulai, 0, 5) }}–{{ substr($booking->jam_selesai, 0, 5) }}
+                    · {{ $booking->rentangJam() }}
                 </span>
             </div>
             <div class="flex justify-between gap-4 pt-3 border-t border-line text-base font-extrabold">
