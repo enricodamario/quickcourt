@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
             'role' => 'customer',
         ]);
 
-        $this->call(LapanganSeeder::class);
+        $this->call([
+            LapanganSeeder::class,
+            BookingSeeder::class,
+        ]);
     }
 }

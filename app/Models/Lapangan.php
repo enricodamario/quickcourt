@@ -10,6 +10,9 @@ class Lapangan extends Model
     protected $table = 'lapangan';
     public const JENIS = ['futsal', 'badminton', 'basket', 'padel', 'voli', 'mini soccer', 'tennis'];
 
+    public const JAM_BUKA = 8;
+    public const JAM_TUTUP = 23;
+
     protected $fillable = [
         'nama',
         'jenis',

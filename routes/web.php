@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\LapanganController;
+use App\Http\Controllers\JadwalController;
+use App\Http\Controllers\ProfileController;
 use App\Models\Booking;
 use App\Models\Lapangan;
 use Illuminate\Support\Facades\Route;
@@ -10,16 +11,16 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Dashboard customer. Kalau yang login admin, langsung dialihkan ke dashboard admin.
+// Pengarah setelah login: admin ke dashboard admin, customer ke daftar lapangan.
 Route::get('/dashboard', function () {
     if (auth()->user()->isAdmin()) {
         return redirect()->route('admin.dashboard');
     }
 
-    return view('dashboard');
+    return redirect()->route('lapangan.index');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Semua halaman admin: wajib login DAN wajib admin.
+// Halaman admin: wajib login DAN wajib admin.
 Route::middleware(['auth', 'admin'])
     ->prefix('admin')
     ->name('admin.')
@@ -35,7 +36,11 @@ Route::middleware(['auth', 'admin'])
         Route::resource('lapangan', LapanganController::class)->except('show');
     });
 
+// Halaman customer: wajib login.
 Route::middleware('auth')->group(function () {
+    Route::get('/lapangan', [JadwalController::class, 'index'])->name('lapangan.index');
+    Route::get('/lapangan/{lapangan}', [JadwalController::class, 'show'])->name('lapangan.show');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
