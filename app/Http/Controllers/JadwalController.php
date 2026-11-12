@@ -12,10 +12,11 @@ class JadwalController extends Controller
 {
     public const HARI_KE_DEPAN = 7;
 
-    public function index()
+       public function index()
     {
-        $daftarLapangan = Lapangan::where('status', 'aktif')
-            ->orderBy('jenis')
+        $daftarLapangan = Lapangan::with('jenis')
+            ->where('status', 'aktif')
+            ->orderBy('jenis_lapangan_id')
             ->orderBy('nama')
             ->get();
 

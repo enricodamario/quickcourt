@@ -3,19 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Lapangan extends Model
 {
     protected $table = 'lapangan';
-    public const JENIS = ['futsal', 'badminton', 'basket', 'padel', 'voli', 'mini soccer', 'tennis'];
 
-    public const JAM_BUKA = 8;
-    public const JAM_TUTUP = 23;
+    public const JAM_BUKA = 8;   // slot pertama 08.00
+    public const JAM_TUTUP = 23; // tutup jam 23.00, jadi slot terakhir 22.00
 
     protected $fillable = [
         'nama',
-        'jenis',
+        'jenis_lapangan_id',
         'harga_per_jam',
         'deskripsi',
         'status',
@@ -26,6 +26,11 @@ class Lapangan extends Model
         return [
             'harga_per_jam' => 'integer',
         ];
+    }
+
+    public function jenis(): BelongsTo
+    {
+        return $this->belongsTo(JenisLapangan::class, 'jenis_lapangan_id');
     }
 
     public function bookings(): HasMany

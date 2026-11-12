@@ -11,7 +11,7 @@
                 @forelse ($daftarLapangan as $lapangan)
                     <a href="{{ route('lapangan.show', $lapangan) }}"
                        class="block bg-white shadow-sm rounded-lg p-5 border border-transparent hover:border-green-600 transition">
-                        <p class="text-xs font-semibold text-green-700 uppercase">{{ $lapangan->jenis }}</p>
+                        <p class="text-xs font-semibold text-green-700 uppercase">{{ $lapangan->jenis->nama }}</p>
                         <p class="mt-1 text-lg font-semibold text-gray-900">{{ $lapangan->nama }}</p>
                         @if ($lapangan->deskripsi)
                             <p class="mt-1 text-sm text-gray-600">{{ $lapangan->deskripsi }}</p>

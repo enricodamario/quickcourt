@@ -18,7 +18,7 @@
 
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 <div>
-                    <p class="text-xs font-semibold text-green-700 uppercase">{{ $lapangan->jenis }}</p>
+                    <p class="text-xs font-semibold text-green-700 uppercase">{{ $lapangan->jenis->nama }}</p>
                     <p class="text-lg font-semibold text-gray-900">{{ $lapangan->nama }}</p>
                 </div>
 

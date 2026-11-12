@@ -13,7 +13,7 @@
 
             <p class="text-gray-600">
                 Rp {{ number_format($lapangan->harga_per_jam, 0, ',', '.') }} / jam
-                · {{ ucfirst($lapangan->jenis) }}
+                · {{ $lapangan->jenis->nama }}
             </p>
 
             @if ($errors->any())

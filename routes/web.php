@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\JenisLapanganController;
 use App\Http\Controllers\Admin\LapanganController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\JadwalController;
@@ -41,6 +42,10 @@ Route::middleware(['auth', 'admin'])
         })->name('dashboard');
 
         Route::resource('lapangan', LapanganController::class)->except('show');
+
+        Route::resource('jenis-lapangan', JenisLapanganController::class)
+            ->parameters(['jenis-lapangan' => 'jenisLapangan'])
+            ->except('show');
 
         Route::get('/booking', [AdminBookingController::class, 'index'])->name('booking.index');
         Route::patch('/booking/{booking}/batalkan', [AdminBookingController::class, 'batalkan'])->name('booking.batalkan');
