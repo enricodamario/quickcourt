@@ -27,10 +27,14 @@ Route::middleware(['auth', 'admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', function () {
+            Booking::bersihkanKedaluwarsa();
+
             return view('admin.dashboard', [
                 'jumlahLapangan' => Lapangan::count(),
-                'bookingPending' => Booking::where('status', 'pending')->count(),
-                'bookingHariIni' => Booking::whereDate('tanggal', today())->count(),
+                'bookingPending' => Booking::where('status', 'menunggu_pembayaran')->count(),
+                'bookingHariIni' => Booking::whereDate('tanggal', today())
+                    ->where('status', 'dikonfirmasi')
+                    ->count(),
             ]);
         })->name('dashboard');
 
@@ -45,6 +49,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
     Route::get('/booking/konfirmasi', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
+    Route::get('/booking/{booking}/bayar', [BookingController::class, 'bayar'])->name('booking.bayar');
+    Route::post('/booking/{booking}/bayar', [BookingController::class, 'prosesBayar'])->name('booking.prosesBayar');
     Route::patch('/booking/{booking}/batal', [BookingController::class, 'batal'])->name('booking.batal');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

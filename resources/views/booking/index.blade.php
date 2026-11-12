@@ -25,32 +25,42 @@
                                 {{ $booking->tanggal->locale('id')->translatedFormat('D, d M Y') }}
                                 · {{ substr($booking->jam_mulai, 0, 5) }}–{{ substr($booking->jam_selesai, 0, 5) }}
                             </p>
+                            @if ($booking->status === 'dikonfirmasi' && $booking->metode_bayar)
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Dibayar via {{ \App\Models\Booking::METODE_BAYAR[$booking->metode_bayar] ?? $booking->metode_bayar }}
+                                </p>
+                            @endif
+                            @if ($booking->status === 'menunggu_pembayaran')
+                                <p class="text-xs text-yellow-800 mt-1">
+                                    Bayar sebelum {{ $booking->batas_bayar->format('H:i') }} WIB
+                                </p>
+                            @endif
                         </div>
 
-                        @if ($booking->status === 'pending')
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-900">Menunggu</span>
-                        @elseif ($booking->status === 'dikonfirmasi')
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Dikonfirmasi</span>
-                        @else
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Dibatalkan</span>
-                        @endif
+                        <x-status-booking :status="$booking->status" />
                     </div>
 
-                    <div class="flex items-center justify-between">
-                        <p class="font-bold {{ $booking->status === 'dibatalkan' ? 'text-gray-400 line-through' : 'text-gray-900' }}">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <p class="font-bold {{ in_array($booking->status, ['dibatalkan', 'kedaluwarsa']) ? 'text-gray-400 line-through' : 'text-gray-900' }}">
                             Rp {{ number_format($booking->total_harga, 0, ',', '.') }}
                         </p>
 
                         @if ($booking->bisaDibatalkan())
-                            <form method="POST" action="{{ route('booking.batal', $booking) }}"
-                                  onsubmit="return confirm('Yakin ingin membatalkan booking ini?')">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit"
-                                        class="px-4 py-2 text-sm font-semibold rounded-lg border border-red-300 text-red-700 hover:bg-red-50">
-                                    Batalkan
-                                </button>
-                            </form>
+                            <div class="flex items-center gap-2">
+                                <form method="POST" action="{{ route('booking.batal', $booking) }}"
+                                      onsubmit="return confirm('Yakin ingin membatalkan booking ini?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit"
+                                            class="px-4 py-2 text-sm font-semibold rounded-lg border border-red-300 text-red-700 hover:bg-red-50">
+                                        Batalkan
+                                    </button>
+                                </form>
+                                <a href="{{ route('booking.bayar', $booking) }}"
+                                   class="px-4 py-2 text-sm font-semibold rounded-lg bg-green-700 text-white hover:bg-green-800">
+                                    Bayar sekarang
+                                </a>
+                            </div>
                         @endif
                     </div>
                 </div>

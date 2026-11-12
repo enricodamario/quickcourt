@@ -15,10 +15,13 @@ use Illuminate\Validation\ValidationException;
 class BookingController extends Controller
 {
     public const MAKS_JAM = 4;
+    public const MAKS_BELUM_BAYAR = 2;
 
     // Halaman "Booking Saya"
     public function index(Request $request)
     {
+        Booking::bersihkanKedaluwarsa();
+
         $bookings = $request->user()->bookings()
             ->with('lapangan')
             ->orderByDesc('tanggal')
@@ -28,9 +31,11 @@ class BookingController extends Controller
         return view('booking.index', compact('bookings'));
     }
 
-    // Halaman konfirmasi sebelum booking disimpan
+    // Halaman konfirmasi sebelum booking dibuat
     public function create(Request $request)
     {
+        Booking::bersihkanKedaluwarsa();
+
         [$lapangan, $tanggal, $jamList] = $this->validasiPilihan($request);
 
         $sudahTerisi = BookingSlot::where('lapangan_id', $lapangan->id)
@@ -49,13 +54,25 @@ class BookingController extends Controller
         return view('booking.konfirmasi', compact('lapangan', 'tanggal', 'jamList', 'totalHarga'));
     }
 
-    // Menyimpan booking
+    // Membuat booking dan menahan jadwal selama batas waktu pembayaran
     public function store(Request $request)
     {
+        Booking::bersihkanKedaluwarsa();
+
         [$lapangan, $tanggal, $jamList] = $this->validasiPilihan($request);
 
+        $belumBayar = $request->user()->bookings()
+            ->where('status', 'menunggu_pembayaran')
+            ->count();
+
+        if ($belumBayar >= self::MAKS_BELUM_BAYAR) {
+            throw ValidationException::withMessages([
+                'jam' => 'Kamu masih punya booking yang belum dibayar. Selesaikan atau batalkan dulu sebelum membuat booking baru.',
+            ]);
+        }
+
         try {
-            DB::transaction(function () use ($request, $lapangan, $tanggal, $jamList) {
+            $booking = DB::transaction(function () use ($request, $lapangan, $tanggal, $jamList) {
                 $booking = Booking::create([
                     'user_id' => $request->user()->id,
                     'lapangan_id' => $lapangan->id,
@@ -63,7 +80,8 @@ class BookingController extends Controller
                     'jam_mulai' => sprintf('%02d:00', $jamList[0]),
                     'jam_selesai' => sprintf('%02d:00', $jamList[count($jamList) - 1] + 1),
                     'total_harga' => $lapangan->harga_per_jam * count($jamList),
-                    'status' => 'pending',
+                    'status' => 'menunggu_pembayaran',
+                    'batas_bayar' => now()->addMinutes(Booking::BATAS_BAYAR_MENIT),
                 ]);
 
                 foreach ($jamList as $jam) {
@@ -74,6 +92,8 @@ class BookingController extends Controller
                         'jam' => $jam,
                     ]);
                 }
+
+                return $booking;
             });
         } catch (UniqueConstraintViolationException $e) {
             return redirect()
@@ -81,24 +101,81 @@ class BookingController extends Controller
                 ->withErrors(['jam' => 'Maaf, jam yang kamu pilih baru saja dibooking orang lain. Silakan pilih jam lain.']);
         }
 
-        return redirect()->route('booking.index')
-            ->with('success', 'Booking berhasil dibuat dan menunggu konfirmasi admin.');
+        return redirect()->route('booking.bayar', $booking);
     }
 
-    // Membatalkan booking milik sendiri
+    // Halaman pembayaran (simulasi)
+    public function bayar(Request $request, Booking $booking)
+    {
+        abort_if($booking->user_id !== $request->user()->id, 403);
+
+        Booking::bersihkanKedaluwarsa();
+        $booking->refresh();
+
+        if ($booking->status !== 'menunggu_pembayaran') {
+            return redirect()->route('booking.index')
+                ->with('error', 'Booking ini tidak sedang menunggu pembayaran.');
+        }
+
+        $booking->load('lapangan');
+        $sisaDetik = max(0, (int) now()->diffInSeconds($booking->batas_bayar, false));
+
+        return view('booking.bayar', compact('booking', 'sisaDetik'));
+    }
+
+    // Memproses pembayaran (simulasi): langsung dianggap berhasil
+    public function prosesBayar(Request $request, Booking $booking)
+    {
+        abort_if($booking->user_id !== $request->user()->id, 403);
+
+        $data = $request->validate([
+            'metode_bayar' => ['required', Rule::in(array_keys(Booking::METODE_BAYAR))],
+        ], [
+            'metode_bayar.required' => 'Pilih metode pembayaran dulu.',
+        ]);
+
+        // Update bersyarat: hanya berhasil kalau masih menunggu pembayaran DAN belum lewat batas waktu.
+        $berhasil = Booking::whereKey($booking->id)
+            ->where('status', 'menunggu_pembayaran')
+            ->where('batas_bayar', '>=', now())
+            ->update([
+                'status' => 'dikonfirmasi',
+                'metode_bayar' => $data['metode_bayar'],
+                'dibayar_at' => now(),
+            ]);
+
+        if (! $berhasil) {
+            Booking::bersihkanKedaluwarsa();
+
+            return redirect()->route('booking.index')
+                ->with('error', 'Pembayaran gagal karena batas waktu sudah habis atau booking sudah tidak aktif.');
+        }
+
+        return redirect()->route('booking.index')
+            ->with('success', 'Pembayaran berhasil! Booking kamu sudah terkonfirmasi.');
+    }
+
+    // Membatalkan booking yang belum dibayar
     public function batal(Request $request, Booking $booking)
     {
         abort_if($booking->user_id !== $request->user()->id, 403);
 
-        if (! $booking->bisaDibatalkan()) {
+        $berhasil = DB::transaction(function () use ($booking) {
+            $diubah = Booking::whereKey($booking->id)
+                ->where('status', 'menunggu_pembayaran')
+                ->update(['status' => 'dibatalkan']);
+
+            if ($diubah) {
+                BookingSlot::where('booking_id', $booking->id)->delete();
+            }
+
+            return $diubah;
+        });
+
+        if (! $berhasil) {
             return redirect()->route('booking.index')
                 ->with('error', 'Booking ini tidak bisa dibatalkan.');
         }
-
-        DB::transaction(function () use ($booking) {
-            $booking->update(['status' => 'dibatalkan']);
-            $booking->slots()->delete();
-        });
 
         return redirect()->route('booking.index')
             ->with('success', 'Booking berhasil dibatalkan.');

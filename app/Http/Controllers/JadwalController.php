@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BookingSlot;
+use App\Models\Booking;
 use App\Models\Lapangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -23,6 +24,8 @@ class JadwalController extends Controller
 
     public function show(Request $request, Lapangan $lapangan)
     {
+        Booking::bersihkanKedaluwarsa();
+
         abort_if($lapangan->status !== 'aktif', 404);
 
         $hariIni = today();

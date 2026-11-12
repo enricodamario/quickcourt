@@ -16,10 +16,15 @@ return new class extends Migration
             $table->time('jam_mulai');
             $table->time('jam_selesai');
             $table->unsignedInteger('total_harga');
-            $table->enum('status', ['pending', 'dikonfirmasi', 'dibatalkan'])->default('pending');
+            $table->enum('status', ['menunggu_pembayaran', 'dikonfirmasi', 'dibatalkan', 'kedaluwarsa'])
+                ->default('menunggu_pembayaran');
+            $table->timestamp('batas_bayar')->nullable();
+            $table->string('metode_bayar', 20)->nullable();
+            $table->timestamp('dibayar_at')->nullable();
             $table->timestamps();
 
             $table->index(['lapangan_id', 'tanggal']);
+            $table->index(['status', 'batas_bayar']);
         });
     }
 

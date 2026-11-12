@@ -8,6 +8,14 @@
     <div class="py-12">
         <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
+            @if ($errors->any())
+                <div class="p-4 rounded-md bg-red-50 text-red-800 space-y-1">
+                    @foreach ($errors->all() as $pesan)
+                        <p>{{ $pesan }}</p>
+                    @endforeach
+                </div>
+            @endif
+
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 <div>
                     <p class="text-xs font-semibold text-green-700 uppercase">{{ $lapangan->jenis }}</p>
@@ -40,7 +48,8 @@
             </div>
 
             <div class="p-4 rounded-md bg-yellow-50 text-yellow-900 text-sm">
-                Pembayaran dilakukan di tempat. Booking berstatus <strong>Menunggu</strong> sampai dikonfirmasi admin.
+                Setelah lanjut, jadwal ini <strong>ditahan selama {{ \App\Models\Booking::BATAS_BAYAR_MENIT }} menit</strong>
+                untuk pembayaran. Booking langsung terkonfirmasi setelah dibayar.
             </div>
 
             <form method="POST" action="{{ route('booking.store') }}" class="flex items-center justify-between gap-4">
@@ -55,7 +64,7 @@
                    class="text-gray-600 hover:underline">Ubah jam</a>
 
                 <button type="submit" class="px-6 py-3 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800">
-                    Konfirmasi Booking
+                    Lanjut ke Pembayaran
                 </button>
             </form>
         </div>

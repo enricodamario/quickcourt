@@ -24,6 +24,8 @@ class BookingSeeder extends Seeder
             'jam_selesai' => '21:00',
             'total_harga' => $lapangan->harga_per_jam * 2,
             'status' => 'dikonfirmasi',
+            'metode_bayar' => 'qris',
+            'dibayar_at' => now(),
         ]);
 
         foreach ([19, 20] as $jam) {
