@@ -18,6 +18,7 @@ class Lapangan extends Model
         'jenis_lapangan_id',
         'harga_per_jam',
         'deskripsi',
+        'foto',
         'status',
     ];
 
@@ -36,5 +37,11 @@ class Lapangan extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    // Alamat lengkap foto untuk ditampilkan di browser, atau null kalau belum ada foto
+    public function fotoUrl(): ?string
+    {
+        return $this->foto ? asset('storage/' . $this->foto) : null;
     }
 }

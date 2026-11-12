@@ -8,7 +8,7 @@
         ];
     @endphp
 
-    {{-- Header hijau: nama lapangan + pilihan tanggal --}}
+    {{-- Header hijau: nama lapangan + foto + pilihan tanggal --}}
     <section class="bg-court text-white">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-5 pb-6 space-y-5">
             <div class="flex items-center gap-3">
@@ -24,6 +24,11 @@
                     </p>
                 </div>
             </div>
+
+            @if ($lapangan->fotoUrl())
+                <img src="{{ $lapangan->fotoUrl() }}" alt="{{ $lapangan->nama }}"
+                     class="w-full h-44 sm:h-56 rounded-2xl object-cover">
+            @endif
 
             <div>
                 <p class="text-sm font-semibold text-court-soft mb-2">{{ $tanggal->translatedFormat('l, d F Y') }}</p>

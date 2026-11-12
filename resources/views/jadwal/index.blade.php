@@ -84,9 +84,14 @@
 
                 <article class="bg-white rounded-2xl border border-line p-4 space-y-3">
                     <a href="{{ route('lapangan.show', $lapangan) }}" class="flex gap-3 group">
-                        <div class="h-16 w-16 shrink-0 rounded-2xl {{ $latar }} flex items-center justify-center">
-                            <svg class="h-8 w-8 {{ $warnaIkon }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $ikon[$kunciIkon] !!}</svg>
-                        </div>
+                        @if ($lapangan->fotoUrl())
+                            <img src="{{ $lapangan->fotoUrl() }}" alt="{{ $lapangan->nama }}" loading="lazy"
+                                 class="h-20 w-20 shrink-0 rounded-2xl object-cover">
+                        @else
+                            <div class="h-20 w-20 shrink-0 rounded-2xl {{ $latar }} flex items-center justify-center">
+                                <svg class="h-9 w-9 {{ $warnaIkon }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{!! $ikon[$kunciIkon] !!}</svg>
+                            </div>
+                        @endif
                         <div class="min-w-0 flex-1">
                             <h3 class="font-bold group-hover:text-court">{{ $lapangan->nama }}</h3>
                             <p class="text-sm text-muted truncate">
@@ -103,7 +108,7 @@
                         @if (count($kosong) > 0)
                             <span class="text-xs font-semibold text-muted">{{ __('Available today') }}</span>
                             @foreach ($kosong as $jam)
-                                <a href="{{ route('lapangan.show', $lapangan) }}"
+                                <a href="{{ route('lapangan.show', ['lapangan' => $lapangan, 'jam' => $jam]) }}"
                                    class="h-10 px-3 rounded-xl bg-volt-soft text-volt-ink text-sm font-bold inline-flex items-center hover:bg-volt">
                                     {{ sprintf('%02d:00', $jam) }}
                                 </a>
