@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BookingSlot;
 use App\Models\Booking;
+use App\Models\BookingSlot;
+use App\Models\JenisLapangan;
 use App\Models\Lapangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -12,15 +13,51 @@ class JadwalController extends Controller
 {
     public const HARI_KE_DEPAN = 7;
 
-       public function index()
+    public function index(Request $request)
     {
+        Booking::bersihkanKedaluwarsa();
+
+        $filter = $request->validate([
+            'jenis' => ['nullable', 'integer'],
+            'cari' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        // Chip filter: hanya jenis yang punya lapangan aktif
+        $daftarJenis = JenisLapangan::whereHas('lapangan', fn ($query) => $query->where('status', 'aktif'))
+            ->orderBy('nama')
+            ->get();
+
         $daftarLapangan = Lapangan::with('jenis')
             ->where('status', 'aktif')
+            ->when($filter['jenis'] ?? null, fn ($query, $jenis) => $query->where('jenis_lapangan_id', $jenis))
+            ->when($filter['cari'] ?? null, fn ($query, $cari) => $query->where('nama', 'like', '%' . $cari . '%'))
             ->orderBy('jenis_lapangan_id')
             ->orderBy('nama')
             ->get();
 
-        return view('jadwal.index', compact('daftarLapangan'));
+        // Jam terisi hari ini untuk SEMUA lapangan yang tampil, diambil dalam satu query
+        $terisiHariIni = BookingSlot::whereIn('lapangan_id', $daftarLapangan->pluck('id'))
+            ->where('tanggal', today()->toDateString())
+            ->get(['lapangan_id', 'jam'])
+            ->groupBy('lapangan_id')
+            ->map(fn ($slots) => $slots->pluck('jam')->all());
+
+        // "Available today": 3 jam kosong terdekat hari ini untuk setiap lapangan
+        $jamMulai = max(Lapangan::JAM_BUKA, now()->hour + 1);
+        $jamKosong = [];
+
+        foreach ($daftarLapangan as $lapangan) {
+            $terisi = $terisiHariIni[$lapangan->id] ?? [];
+            $jamKosong[$lapangan->id] = [];
+
+            for ($jam = $jamMulai; $jam < Lapangan::JAM_TUTUP && count($jamKosong[$lapangan->id]) < 3; $jam++) {
+                if (! in_array($jam, $terisi)) {
+                    $jamKosong[$lapangan->id][] = $jam;
+                }
+            }
+        }
+
+        return view('jadwal.index', compact('daftarLapangan', 'daftarJenis', 'filter', 'jamKosong'));
     }
 
     public function show(Request $request, Lapangan $lapangan)
@@ -39,13 +76,13 @@ class JadwalController extends Controller
                 'after_or_equal:' . $hariIni->toDateString(),
                 'before_or_equal:' . $hariTerakhir->toDateString(),
             ],
+            'jam' => ['nullable', 'integer'],
         ]);
 
         $tanggal = $request->filled('tanggal')
             ? Carbon::parse($request->query('tanggal'))
             : $hariIni;
 
-        // Ambil semua jam yang sudah terisi untuk lapangan & tanggal ini: satu query.
         $jamTerisi = BookingSlot::where('lapangan_id', $lapangan->id)
             ->where('tanggal', $tanggal->toDateString())
             ->pluck('jam')
@@ -63,9 +100,21 @@ class JadwalController extends Controller
 
             $slots[] = [
                 'jam' => $jam,
-                'label' => sprintf('%02d.00', $jam),
+                'label' => sprintf('%02d:00', $jam),
                 'status' => $status,
             ];
+        }
+
+        // Jam yang langsung terpilih kalau datang dari chip "Available today" di Explore
+        $jamDipilih = [];
+        if ($request->filled('jam')) {
+            $jamDiminta = (int) $request->query('jam');
+
+            foreach ($slots as $slot) {
+                if ($slot['jam'] === $jamDiminta && $slot['status'] === 'tersedia') {
+                    $jamDipilih = [(string) $jamDiminta];
+                }
+            }
         }
 
         $daftarHari = [];
@@ -73,12 +122,12 @@ class JadwalController extends Controller
             $hari = $hariIni->copy()->addDays($i);
             $daftarHari[] = [
                 'tanggal' => $hari->toDateString(),
-                'nama' => $hari->locale('id')->translatedFormat('D'),
+                'nama' => $hari->translatedFormat('D'),
                 'angka' => $hari->format('d'),
                 'aktif' => $hari->isSameDay($tanggal),
             ];
         }
 
-        return view('jadwal.show', compact('lapangan', 'tanggal', 'slots', 'daftarHari'));
+        return view('jadwal.show', compact('lapangan', 'tanggal', 'slots', 'daftarHari', 'jamDipilih'));
     }
 }

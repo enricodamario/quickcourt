@@ -22,5 +22,17 @@
     "Unavailable today": "Tidak tersedia hari ini",
     "See other dates": "Lihat jadwal lain",
     "No courts match your search.": "Tidak ada lapangan yang cocok dengan pencarianmu.",
-    "Clear filters": "Hapus filter"
+    "Clear filters": "Hapus filter",
+
+    "Back": "Kembali",
+    "Pick your hours": "Pilih jam",
+    "Max. 4 hours in a row": "Maks. 4 jam berturut-turut",
+    "Available": "Tersedia",
+    "Selected": "Dipilih",
+    "Booked": "Penuh",
+    "Passed": "Lewat",
+    "No hours selected": "Belum ada jam dipilih",
+    "1 hour": "1 jam",
+    ":count hours": ":count jam",
+    "Lock it in": "Amankan jadwal"
 }
