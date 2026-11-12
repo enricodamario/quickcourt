@@ -17,21 +17,37 @@ class BookingController extends Controller
     public const MAKS_JAM = 4;
     public const MAKS_BELUM_BAYAR = 2;
 
-    // Halaman "Booking Saya"
+    // Halaman "Booking saya", dengan tab Upcoming dan Past
     public function index(Request $request)
     {
         Booking::bersihkanKedaluwarsa();
 
-        $bookings = $request->user()->bookings()
-            ->with('lapangan')
-            ->orderByDesc('tanggal')
-            ->orderByDesc('jam_mulai')
-            ->get();
+        $tab = $request->query('tab') === 'past' ? 'past' : 'upcoming';
 
-        return view('booking.index', compact('bookings'));
+        $query = $request->user()->bookings()->with('lapangan.jenis');
+
+        if ($tab === 'upcoming') {
+            // Masih aktif dan tanggalnya hari ini atau ke depan
+            $query->whereIn('status', ['menunggu_pembayaran', 'dikonfirmasi'])
+                ->where('tanggal', '>=', today()->toDateString())
+                ->orderBy('tanggal')
+                ->orderBy('jam_mulai');
+        } else {
+            // Sudah dibatalkan / kedaluwarsa, ATAU tanggalnya sudah lewat
+            $query->where(function ($q) {
+                $q->whereIn('status', ['dibatalkan', 'kedaluwarsa'])
+                    ->orWhere('tanggal', '<', today()->toDateString());
+            })
+                ->orderByDesc('tanggal')
+                ->orderByDesc('jam_mulai');
+        }
+
+        $bookings = $query->get();
+
+        return view('booking.index', compact('bookings', 'tab'));
     }
 
-    // Halaman konfirmasi sebelum booking dibuat
+    // Halaman konfirmasi lama (tidak dipakai lagi oleh tampilan, tapi tetap aman)
     public function create(Request $request)
     {
         Booking::bersihkanKedaluwarsa();
@@ -45,7 +61,7 @@ class BookingController extends Controller
 
         if ($sudahTerisi) {
             throw ValidationException::withMessages([
-                'jam' => 'Sebagian jam yang kamu pilih sudah dibooking. Silakan pilih jam lain.',
+                'jam' => __('Sorry, someone just booked that time. Please pick another one.'),
             ]);
         }
 
@@ -67,7 +83,7 @@ class BookingController extends Controller
 
         if ($belumBayar >= self::MAKS_BELUM_BAYAR) {
             throw ValidationException::withMessages([
-                'jam' => 'Kamu masih punya booking yang belum dibayar. Selesaikan atau batalkan dulu sebelum membuat booking baru.',
+                'jam' => __('You still have an unpaid booking. Pay or cancel it before making a new one.'),
             ]);
         }
 
@@ -98,7 +114,7 @@ class BookingController extends Controller
         } catch (UniqueConstraintViolationException $e) {
             return redirect()
                 ->route('lapangan.show', ['lapangan' => $lapangan, 'tanggal' => $tanggal->toDateString()])
-                ->withErrors(['jam' => 'Maaf, jam yang kamu pilih baru saja dibooking orang lain. Silakan pilih jam lain.']);
+                ->withErrors(['jam' => __('Sorry, someone just booked that time. Please pick another one.')]);
         }
 
         return redirect()->route('booking.bayar', $booking);
@@ -114,7 +130,7 @@ class BookingController extends Controller
 
         if ($booking->status !== 'menunggu_pembayaran') {
             return redirect()->route('booking.index')
-                ->with('error', 'Booking ini tidak sedang menunggu pembayaran.');
+                ->with('error', __('This booking is not awaiting payment.'));
         }
 
         $booking->load('lapangan');
@@ -131,7 +147,7 @@ class BookingController extends Controller
         $data = $request->validate([
             'metode_bayar' => ['required', Rule::in(array_keys(Booking::METODE_BAYAR))],
         ], [
-            'metode_bayar.required' => 'Pilih metode pembayaran dulu.',
+            'metode_bayar.required' => __('Choose a payment method.'),
         ]);
 
         // Update bersyarat: hanya berhasil kalau masih menunggu pembayaran DAN belum lewat batas waktu.
@@ -148,11 +164,11 @@ class BookingController extends Controller
             Booking::bersihkanKedaluwarsa();
 
             return redirect()->route('booking.index')
-                ->with('error', 'Pembayaran gagal karena batas waktu sudah habis atau booking sudah tidak aktif.');
+                ->with('error', __('Payment failed because the time ran out or the booking is no longer active.'));
         }
 
         return redirect()->route('booking.index')
-            ->with('success', 'Pembayaran berhasil! Booking kamu sudah terkonfirmasi.');
+            ->with('success', __('Payment successful. Your booking is confirmed.'));
     }
 
     // Membatalkan booking yang belum dibayar
@@ -174,11 +190,11 @@ class BookingController extends Controller
 
         if (! $berhasil) {
             return redirect()->route('booking.index')
-                ->with('error', 'Booking ini tidak bisa dibatalkan.');
+                ->with('error', __("This booking can't be cancelled."));
         }
 
         return redirect()->route('booking.index')
-            ->with('success', 'Booking berhasil dibatalkan.');
+            ->with('success', __('Booking cancelled.'));
     }
 
     // Validasi pilihan lapangan, tanggal, dan jam. Dipakai oleh create() dan store().
@@ -192,8 +208,8 @@ class BookingController extends Controller
             'jam' => ['required', 'array', 'min:1', 'max:' . self::MAKS_JAM],
             'jam.*' => ['integer', 'distinct', 'min:' . Lapangan::JAM_BUKA, 'max:' . (Lapangan::JAM_TUTUP - 1)],
         ], [
-            'jam.required' => 'Pilih minimal satu jam.',
-            'jam.max' => 'Maksimal ' . self::MAKS_JAM . ' jam dalam satu booking.',
+            'jam.required' => __('Pick at least one hour.'),
+            'jam.max' => __('Max. :max hours per booking.', ['max' => self::MAKS_JAM]),
         ]);
 
         $jamList = collect($data['jam'])->map(fn ($jam) => (int) $jam)->sort()->values()->all();
@@ -201,7 +217,7 @@ class BookingController extends Controller
         for ($i = 1; $i < count($jamList); $i++) {
             if ($jamList[$i] !== $jamList[$i - 1] + 1) {
                 throw ValidationException::withMessages([
-                    'jam' => 'Jam yang dipilih harus berurutan, misalnya 19.00 dan 20.00.',
+                    'jam' => __('Hours must be in a row, e.g. 19:00 and 20:00.'),
                 ]);
             }
         }
@@ -210,7 +226,7 @@ class BookingController extends Controller
 
         if ($tanggal->isToday() && $jamList[0] <= now()->hour) {
             throw ValidationException::withMessages([
-                'jam' => 'Jam yang dipilih sudah lewat.',
+                'jam' => __('The hour you picked has already passed.'),
             ]);
         }
 

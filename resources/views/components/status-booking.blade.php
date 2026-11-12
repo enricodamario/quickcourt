@@ -2,13 +2,13 @@
 
 @php
     [$label, $warna] = match ($status) {
-        'menunggu_pembayaran' => ['Menunggu pembayaran', 'bg-yellow-100 text-yellow-900'],
-        'dikonfirmasi' => ['Lunas', 'bg-green-100 text-green-800'],
-        'kedaluwarsa' => ['Kedaluwarsa', 'bg-gray-200 text-gray-700'],
-        default => ['Dibatalkan', 'bg-red-100 text-red-800'],
+        'menunggu_pembayaran' => [__('Awaiting payment'), 'bg-amber-100 text-amber-900'],
+        'dikonfirmasi' => [__('Paid'), 'bg-volt text-ink'],
+        'kedaluwarsa' => [__('Expired'), 'bg-gray-200 text-gray-700'],
+        default => [__('Cancelled'), 'bg-red-100 text-red-800'],
     };
 @endphp
 
-<span {{ $attributes->merge(['class' => "px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap $warna"]) }}>
+<span {{ $attributes->merge(['class' => "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap $warna"]) }}>
     {{ $label }}
 </span>
