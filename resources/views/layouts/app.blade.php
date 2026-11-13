@@ -62,7 +62,7 @@
                     <x-slot name="trigger">
                         <button class="h-10 w-10 rounded-full bg-ink text-volt text-sm font-bold flex items-center justify-center"
                                 aria-label="{{ Auth::user()->name }}">
-                            {{ Auth::user()->initials() }}
+                                <x-avatar :user="Auth::user()" class="h-10 w-10" />
                         </button>
                     </x-slot>
                     <x-slot name="content">

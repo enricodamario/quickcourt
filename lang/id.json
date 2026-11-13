@@ -204,5 +204,17 @@
     "Court type updated.": "Jenis lapangan diperbarui.",
     "Court type deleted.": "Jenis lapangan dihapus.",
     "This court type is still used by a venue, so it can't be deleted.": "Jenis lapangan ini masih dipakai venue, jadi tidak bisa dihapus.",
-    "This court type already exists.": "Jenis lapangan ini sudah ada."
+    "This court type already exists.": "Jenis lapangan ini sudah ada.",
+
+    "My account": "Akun saya",
+    "Profile photo": "Foto profil",
+    "Choose photo": "Pilih foto",
+    "Remove photo": "Hapus foto",
+    "Profile details": "Detail profil",
+    "Update your name and email.": "Perbarui nama dan email kamu.",
+    "Saved.": "Tersimpan.",
+    "Change password": "Ganti kata sandi",
+    "Use a long password that's hard to guess.": "Gunakan kata sandi yang panjang dan sulit ditebak.",
+    "Current password": "Kata sandi saat ini",
+    "New password": "Kata sandi baru"
 }

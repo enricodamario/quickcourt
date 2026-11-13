@@ -40,6 +40,7 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
         public function initials(): string
     {
         return Str::of($this->name)
@@ -49,4 +50,10 @@ class User extends Authenticatable
             ->map(fn ($kata) => Str::upper(Str::substr($kata, 0, 1)))
             ->implode('');
     }
+
+        public function fotoUrl(): ?string
+    {
+        return $this->foto ? asset('storage/' . $this->foto) : null;
+    }
+
 }
