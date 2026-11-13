@@ -132,7 +132,7 @@ A venue holds one sport. The same place offering two sports is stored as two ven
 Requirements: PHP 8.3, Composer, Node.js, and MySQL (for example via XAMPP).
 
 ```bash
-git clone https://github.com/<your-username>/quickcourt.git
+git clone https://github.com/<enricodamario>/quickcourt.git
 cd quickcourt
 
 composer install
