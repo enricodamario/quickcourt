@@ -8,15 +8,11 @@ use App\Models\Booking;
 use App\Models\BookingSlot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
-    public const STATUS = [
-        'menunggu_pembayaran' => 'Menunggu pembayaran',
-        'dikonfirmasi' => 'Lunas',
-        'dibatalkan' => 'Dibatalkan',
-        'kedaluwarsa' => 'Kedaluwarsa',
-    ];
+    public const STATUS = ['menunggu_pembayaran', 'dikonfirmasi', 'dibatalkan', 'kedaluwarsa'];
 
     public function index(Request $request)
     {
@@ -25,7 +21,7 @@ class BookingController extends Controller
         $filter = $request->validate([
             'tanggal' => ['nullable', 'date_format:Y-m-d'],
             'arena_id' => ['nullable', 'integer'],
-            'status' => ['nullable', 'in:' . implode(',', array_keys(self::STATUS))],
+            'status' => ['nullable', Rule::in(self::STATUS)],
         ]);
 
         $daftarBooking = Booking::with(['user', 'arena.jenis'])
@@ -39,12 +35,7 @@ class BookingController extends Controller
 
         $daftarArena = Arena::with('jenis')->orderBy('nama')->get();
 
-        return view('admin.booking.index', [
-            'daftarBooking' => $daftarBooking,
-            'daftarArena' => $daftarArena,
-            'daftarStatus' => self::STATUS,
-            'filter' => $filter,
-        ]);
+        return view('admin.booking.index', compact('daftarBooking', 'daftarArena', 'filter'));
     }
 
     // Admin membatalkan booking (misalnya lapangan rusak). Kalau sudah dibayar, refund dilakukan manual
@@ -63,12 +54,12 @@ class BookingController extends Controller
         });
 
         if (! $berhasil) {
-            return back()->with('error', 'Booking ini sudah tidak aktif.');
+            return back()->with('error', __('This booking is no longer active.'));
         }
 
         $pesan = $booking->status === 'dikonfirmasi'
-            ? 'Booking dibatalkan. Booking ini sudah dibayar, jadi lakukan refund ke customer.'
-            : 'Booking dibatalkan.';
+            ? __('Booking cancelled. It was already paid, so please refund the customer.')
+            : __('Booking cancelled.');
 
         return back()->with('success', $pesan);
     }

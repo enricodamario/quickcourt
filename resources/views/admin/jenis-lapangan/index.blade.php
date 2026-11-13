@@ -1,63 +1,50 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Jenis Lapangan
-            </h2>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <h1 class="text-2xl font-extrabold tracking-tight">{{ __('Court types') }}</h1>
             <a href="{{ route('admin.jenis-lapangan.create') }}"
-               class="inline-flex items-center px-4 py-2 bg-gray-800 rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                + Tambah Jenis
+               class="h-11 px-5 rounded-xl bg-ink text-volt font-extrabold inline-flex items-center hover:brightness-110">
+                + {{ __('New court type') }}
             </a>
         </div>
-    </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-            @if (session('success'))
-                <div class="p-4 rounded-md bg-green-50 text-green-800">{{ session('success') }}</div>
-            @endif
+        @if (session('success'))
+            <div class="p-4 rounded-2xl bg-court-soft text-court-dark text-sm font-semibold">{{ session('success') }}</div>
+        @endif
+        @if (session('error'))
+            <div class="p-4 rounded-2xl bg-red-50 text-red-800 text-sm font-semibold">{{ session('error') }}</div>
+        @endif
 
-            @if (session('error'))
-                <div class="p-4 rounded-md bg-red-50 text-red-800">{{ session('error') }}</div>
-            @endif
+        <div class="bg-white border border-line rounded-3xl overflow-hidden">
+            @forelse ($daftarJenis as $jenis)
+                <div class="px-5 py-4 flex flex-wrap items-center gap-4 border-t border-line first:border-t-0">
+                    <div class="flex-1 min-w-[160px]">
+                        <p class="font-extrabold">{{ $jenis->nama }}</p>
+                        <p class="text-sm text-muted">
+                            {{ $jenis->arena_count === 1 ? __('1 venue') : __(':count venues', ['count' => $jenis->arena_count]) }}
+                        </p>
+                    </div>
 
-            <div class="bg-white shadow-sm rounded-lg overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah lapangan</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        @forelse ($daftarJenis as $jenis)
-                            <tr>
-                                <td class="px-6 py-4 text-gray-900">{{ $jenis->nama }}</td>
-                                <td class="px-6 py-4 text-gray-700">{{ $jenis->lapangan_count }}</td>
-                                <td class="px-6 py-4 text-right whitespace-nowrap">
-                                    <a href="{{ route('admin.jenis-lapangan.edit', $jenis) }}" class="text-indigo-600 hover:underline">Edit</a>
+                    <a href="{{ route('admin.jenis-lapangan.edit', $jenis) }}"
+                       class="h-10 px-4 rounded-xl border border-gray-300 text-sm font-bold inline-flex items-center hover:border-ink">
+                        {{ __('Edit') }}
+                    </a>
 
-                                    <form action="{{ route('admin.jenis-lapangan.destroy', $jenis) }}" method="POST" class="inline ml-3"
-                                          onsubmit="return confirm('Yakin ingin menghapus jenis ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:underline">Hapus</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="px-6 py-8 text-center text-gray-500">
-                                    Belum ada jenis lapangan. Klik "Tambah Jenis" untuk mulai.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <a href="{{ route('admin.arena.index') }}" class="inline-block text-gray-600 hover:underline">&larr; Kembali ke Kelola Lapangan</a>
+                    @if ($jenis->arena_count === 0)
+                        <form method="POST" action="{{ route('admin.jenis-lapangan.destroy', $jenis) }}"
+                              onsubmit="return confirm(@js(__('Delete this court type?')))">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="h-10 px-4 rounded-xl border border-red-200 text-red-700 text-sm font-bold hover:bg-red-50">
+                                {{ __('Delete') }}
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p class="p-8 text-center font-semibold">{{ __('No court types yet. Add your first one.') }}</p>
+            @endforelse
         </div>
     </div>
 </x-app-layout>

@@ -1,34 +1,36 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ $jenisLapangan->exists ? 'Edit Jenis Lapangan' : 'Tambah Jenis Lapangan' }}
-        </h2>
-    </x-slot>
+    <div class="max-w-xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        <a href="{{ route('admin.jenis-lapangan.index') }}" class="text-sm font-bold text-court hover:underline">
+            &larr; {{ __('Court types') }}
+        </a>
 
-    <div class="py-12">
-        <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-white shadow-sm rounded-lg p-6">
-                <form method="POST"
-                      action="{{ $jenisLapangan->exists ? route('admin.jenis-lapangan.update', $jenisLapangan) : route('admin.jenis-lapangan.store') }}"
-                      class="space-y-6">
-                    @csrf
-                    @if ($jenisLapangan->exists)
-                        @method('PUT')
-                    @endif
+        <h1 class="text-2xl font-extrabold tracking-tight">
+            {{ $jenisLapangan->exists ? __('Edit court type') : __('New court type') }}
+        </h1>
 
-                    <div>
-                        <x-input-label for="nama" value="Nama jenis" />
-                        <x-text-input id="nama" name="nama" type="text" class="mt-1 block w-full"
-                                      :value="old('nama', $jenisLapangan->nama)" placeholder="Contoh: Tenis" required />
-                        <x-input-error :messages="$errors->get('nama')" class="mt-2" />
-                    </div>
+        <form method="POST"
+              action="{{ $jenisLapangan->exists ? route('admin.jenis-lapangan.update', $jenisLapangan) : route('admin.jenis-lapangan.store') }}"
+              class="bg-white border border-line rounded-3xl p-6 space-y-5">
+            @csrf
+            @if ($jenisLapangan->exists)
+                @method('PUT')
+            @endif
 
-                    <div class="flex items-center gap-4">
-                        <x-primary-button>Simpan</x-primary-button>
-                        <a href="{{ route('admin.jenis-lapangan.index') }}" class="text-gray-600 hover:underline">Batal</a>
-                    </div>
-                </form>
+            <div class="space-y-1.5">
+                <label for="nama" class="block text-sm font-semibold">{{ __('Court type name') }}</label>
+                <input id="nama" name="nama" type="text" value="{{ old('nama', $jenisLapangan->nama) }}"
+                       placeholder="Padel" required autofocus
+                       class="block w-full h-12 px-4 rounded-xl border-gray-300 focus:border-court focus:ring-court">
+                <x-input-error :messages="$errors->get('nama')" />
             </div>
-        </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="submit" class="h-12 px-6 rounded-2xl bg-ink text-volt font-extrabold hover:brightness-110">
+                    {{ __('Save') }}
+                </button>
+                <a href="{{ route('admin.jenis-lapangan.index') }}"
+                   class="text-sm font-semibold text-muted hover:text-ink">{{ __('Cancel') }}</a>
+            </div>
+        </form>
     </div>
 </x-app-layout>

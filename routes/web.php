@@ -12,6 +12,7 @@ use App\Models\Booking;
 use App\Models\BookingSlot;
 use App\Models\Lapangan;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\DashboardController;
 
 // Halaman depan: tamu melihat halaman login QuickCourt, yang sudah login langsung ke aplikasi.
 Route::get('/', function () {
@@ -59,18 +60,7 @@ Route::middleware(['auth', 'admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/dashboard', function () {
-            Booking::bersihkanKedaluwarsa();
-
-            $lunasHariIni = Booking::whereDate('tanggal', today())->where('status', 'dikonfirmasi');
-
-            return view('admin.dashboard', [
-                'jumlahLapangan' => Lapangan::where('status', 'aktif')->count(),
-                'menungguPembayaran' => Booking::where('status', 'menunggu_pembayaran')->count(),
-                'bookingHariIni' => (clone $lunasHariIni)->count(),
-                'pendapatanHariIni' => (clone $lunasHariIni)->sum('total_harga'),
-            ]);
-        })->name('dashboard');
+               Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // Venue (arena) dan court di dalamnya
         Route::resource('arena', ArenaController::class);

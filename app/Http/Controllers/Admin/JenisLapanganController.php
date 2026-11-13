@@ -11,7 +11,7 @@ class JenisLapanganController extends Controller
 {
     public function index()
     {
-        $daftarJenis = JenisLapangan::withCount('lapangan')->orderBy('nama')->get();
+        $daftarJenis = JenisLapangan::withCount('arena')->orderBy('nama')->get();
 
         return view('admin.jenis-lapangan.index', compact('daftarJenis'));
     }
@@ -26,7 +26,7 @@ class JenisLapanganController extends Controller
         JenisLapangan::create($this->validasi($request));
 
         return redirect()->route('admin.jenis-lapangan.index')
-            ->with('success', 'Jenis lapangan berhasil ditambahkan.');
+            ->with('success', __('Court type added.'));
     }
 
     public function edit(JenisLapangan $jenisLapangan)
@@ -39,33 +39,31 @@ class JenisLapanganController extends Controller
         $jenisLapangan->update($this->validasi($request, $jenisLapangan));
 
         return redirect()->route('admin.jenis-lapangan.index')
-            ->with('success', 'Jenis lapangan berhasil diperbarui.');
+            ->with('success', __('Court type updated.'));
     }
 
     public function destroy(JenisLapangan $jenisLapangan)
     {
-        if ($jenisLapangan->lapangan()->exists()) {
+        if ($jenisLapangan->arena()->exists()) {
             return redirect()->route('admin.jenis-lapangan.index')
-                ->with('error', 'Jenis ini masih dipakai oleh lapangan, jadi tidak bisa dihapus.');
+                ->with('error', __("This court type is still used by a venue, so it can't be deleted."));
         }
 
         $jenisLapangan->delete();
 
         return redirect()->route('admin.jenis-lapangan.index')
-            ->with('success', 'Jenis lapangan berhasil dihapus.');
+            ->with('success', __('Court type deleted.'));
     }
 
     private function validasi(Request $request, ?JenisLapangan $jenisLapangan = null): array
     {
         return $request->validate([
             'nama' => [
-                'required',
-                'string',
-                'max:50',
+                'required', 'string', 'max:50',
                 Rule::unique('jenis_lapangan', 'nama')->ignore($jenisLapangan?->id),
             ],
         ], [
-            'nama.unique' => 'Jenis lapangan ini sudah ada.',
+            'nama.unique' => __('This court type already exists.'),
         ]);
     }
 }
