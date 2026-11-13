@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Arena;
 use App\Models\Booking;
 use App\Models\BookingSlot;
-use App\Models\Lapangan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -13,7 +13,8 @@ class BookingSeeder extends Seeder
     public function run(): void
     {
         $budi = User::where('email', 'budi@example.com')->first();
-        $lapangan = Lapangan::where('nama', 'Lapangan Futsal A')->first();
+        $lapangan = Arena::where('nama', 'Kick Zone')->first()
+            ->lapangan()->where('nama', 'Court 1')->first();
         $besok = today()->addDay()->toDateString();
 
         $booking = Booking::create([
@@ -22,6 +23,7 @@ class BookingSeeder extends Seeder
             'tanggal' => $besok,
             'jam_mulai' => '19:00',
             'jam_selesai' => '21:00',
+            'rentang_jam' => '19:00–21:00',
             'total_harga' => $lapangan->harga_per_jam * 2,
             'status' => 'dikonfirmasi',
             'metode_bayar' => 'qris',

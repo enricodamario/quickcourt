@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Models\Arena;
 
 class BookingTest extends TestCase
 {
@@ -18,15 +19,20 @@ class BookingTest extends TestCase
     private Lapangan $lapangan;
     private string $besok;
 
-    protected function setUp(): void
+        protected function setUp(): void
     {
         parent::setUp();
 
         $jenis = JenisLapangan::create(['nama' => 'Futsal']);
 
-        $this->lapangan = Lapangan::create([
-            'nama' => 'Lapangan Tes',
+        $arena = Arena::create([
             'jenis_lapangan_id' => $jenis->id,
+            'nama' => 'Arena Tes',
+            'alamat' => 'Jl. Tes No. 1',
+        ]);
+
+        $this->lapangan = $arena->lapangan()->create([
+            'nama' => 'Court 1',
             'harga_per_jam' => 100000,
         ]);
 
