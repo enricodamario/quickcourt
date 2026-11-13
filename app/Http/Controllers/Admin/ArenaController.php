@@ -74,7 +74,7 @@ class ArenaController extends Controller
         $arena->load('jenis');
 
         $daftarCourt = $arena->lapangan()
-            ->withCount('bookings')
+            ->withCount(['slots as bookings_count' => fn ($q) => $q->select(DB::raw('count(distinct booking_id)'))])
             ->orderBy('id')
             ->get();
 
@@ -112,7 +112,7 @@ class ArenaController extends Controller
 
     public function destroy(Arena $arena)
     {
-        $punyaBooking = Booking::whereIn('lapangan_id', $arena->lapangan()->pluck('id'))->exists();
+        $punyaBooking = $arena->bookings()->exists();
 
         if ($punyaBooking) {
             return redirect()->route('admin.arena.show', $arena)

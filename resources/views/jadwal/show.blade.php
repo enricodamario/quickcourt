@@ -1,18 +1,18 @@
 <x-app-layout>
     @php
         $daftarHarga = $grid->mapWithKeys(fn ($court) => [$court['id'] => $court['harga']]);
-        $daftarNama = $grid->mapWithKeys(fn ($court) => [$court['id'] => $court['nama']]);
+        $pilihanAwal = $courtDipilih && $jamDipilih ? [$courtDipilih => $jamDipilih] : new \stdClass();
     @endphp
 
     <div x-data="pilihJadwal({
-            court: @js($courtDipilih),
-            dipilih: @js($jamDipilih),
+            pilihan: @js($pilihanAwal),
             harga: @js($daftarHarga),
-            nama: @js($daftarNama),
             teks: {
                 kosong: @js(__('No hours selected')),
                 satuJam: @js(__('1 hour')),
                 banyakJam: @js(__(':count hours')),
+                satuCourt: @js(__('1 court')),
+                banyakCourt: @js(__(':count courts')),
             },
          })"
          class="pb-36 sm:pb-28">
@@ -92,7 +92,7 @@
                                 <div class="flex gap-1.5">
                                     <div class="sticky left-0 z-10 w-28 shrink-0 bg-white pr-1">
                                         <div class="h-14 rounded-xl border px-2 flex flex-col justify-center"
-                                             :class="court === {{ $court['id'] }} && dipilih.length ? 'border-ink' : 'border-line'">
+                                             :class="jumlahJamDi({{ $court['id'] }}) ? 'border-ink' : 'border-line'">
                                             <span class="text-sm font-extrabold">{{ $court['nama'] }}</span>
                                             <span class="text-[11px] text-muted">Rp {{ number_format($court['harga'], 0, ',', '.') }}</span>
                                         </div>
@@ -128,9 +128,8 @@
                 </div>
 
                 <p class="text-xs text-muted">
+                    {{ __('Tap any available hours.') }}
                     {{ __('Scroll sideways for more hours.') }}
-                    {{ __('One booking is for one court.') }}
-                    {{ __('Picking hours on another court will clear your current selection.') }}
                 </p>
             @endif
         </div>
@@ -139,10 +138,10 @@
         <form method="POST" action="{{ route('booking.store') }}"
               class="fixed inset-x-3 bottom-24 sm:bottom-4 z-20 max-w-3xl mx-auto">
             @csrf
+            <input type="hidden" name="arena_id" value="{{ $arena->id }}">
             <input type="hidden" name="tanggal" value="{{ $tanggal->toDateString() }}">
-            <input type="hidden" name="lapangan_id" :value="court">
-            <template x-for="jam in dipilih" :key="jam">
-                <input type="hidden" name="jam[]" :value="jam">
+            <template x-for="slot in daftarSlot()" :key="slot.kunci">
+                <input type="hidden" :name="'pilihan[' + slot.court + '][]'" :value="slot.jam">
             </template>
 
             <div class="rounded-3xl bg-ink text-white pl-5 pr-3 py-3 flex items-center justify-between gap-3 shadow-xl">
@@ -150,7 +149,7 @@
                     <p class="text-xs text-gray-300 truncate" x-text="ringkasan()"></p>
                     <p class="text-xl font-extrabold" x-text="rupiah(total())"></p>
                 </div>
-                <button type="submit" :disabled="dipilih.length === 0"
+                <button type="submit" :disabled="jumlahJam() === 0"
                         class="h-12 px-4 shrink-0 rounded-2xl bg-volt text-ink text-sm font-extrabold inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
                         <rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
@@ -166,55 +165,60 @@
             return {
                 ...awal,
 
+                // pilihan = { "court_id": [jam, jam, ...] }
                 terpilih(court, jam) {
-                    return this.court === court && this.dipilih.includes(jam);
+                    return (this.pilihan[court] || []).includes(jam);
                 },
 
-                // Satu booking = satu court. Pilih jam di court lain → pilihan sebelumnya diganti
+                // Klik jam yang tersedia: centang atau batal centang. Court lain tidak terpengaruh
                 pilih(court, jam) {
-                    if (this.court !== court) {
-                        this.court = court;
-                        this.dipilih = [jam];
-                        return;
-                    }
+                    const daftar = this.pilihan[court] || [];
+                    const baru = daftar.includes(jam)
+                        ? daftar.filter((j) => j !== jam)
+                        : [...daftar, jam].sort((a, b) => a - b);
 
-                    this.dipilih = this.dipilih.includes(jam)
-                        ? this.dipilih.filter((j) => j !== jam)
-                        : [...this.dipilih, jam].sort((a, b) => a - b);
+                    const pilihan = { ...this.pilihan };
+                    if (baru.length) {
+                        pilihan[court] = baru;
+                    } else {
+                        delete pilihan[court];
+                    }
+                    this.pilihan = pilihan;
+                },
+
+                jumlahJamDi(court) {
+                    return (this.pilihan[court] || []).length;
+                },
+
+                jumlahJam() {
+                    return Object.values(this.pilihan).reduce((jumlah, daftar) => jumlah + daftar.length, 0);
+                },
+
+                jumlahCourt() {
+                    return Object.keys(this.pilihan).length;
                 },
 
                 total() {
-                    return this.court ? this.dipilih.length * this.harga[this.court] : 0;
+                    return Object.entries(this.pilihan)
+                        .reduce((jumlah, [court, daftar]) => jumlah + daftar.length * this.harga[court], 0);
                 },
 
-                // [10, 11, 19] → "10:00–12:00, 19:00–20:00"
-                rentang() {
-                    const jamTeks = (j) => String(j).padStart(2, '0') + ':00';
-                    const hasil = [];
-                    let mulai = null;
-                    let akhir = null;
-
-                    for (const jam of this.dipilih) {
-                        if (mulai !== null && jam === akhir + 1) {
-                            akhir = jam;
-                            continue;
-                        }
-                        if (mulai !== null) hasil.push(jamTeks(mulai) + '–' + jamTeks(akhir + 1));
-                        mulai = akhir = jam;
-                    }
-                    if (mulai !== null) hasil.push(jamTeks(mulai) + '–' + jamTeks(akhir + 1));
-
-                    return hasil.join(', ');
+                // Untuk input tersembunyi: pilihan[court_id][] = jam
+                daftarSlot() {
+                    return Object.entries(this.pilihan).flatMap(([court, daftar]) =>
+                        daftar.map((jam) => ({ court, jam, kunci: court + '-' + jam }))
+                    );
                 },
 
                 ringkasan() {
-                    if (this.dipilih.length === 0) return this.teks.kosong;
+                    const jam = this.jumlahJam();
+                    if (jam === 0) return this.teks.kosong;
 
-                    const jumlah = this.dipilih.length === 1
-                        ? this.teks.satuJam
-                        : this.teks.banyakJam.replace(':count', this.dipilih.length);
+                    const court = this.jumlahCourt();
+                    const teksJam = jam === 1 ? this.teks.satuJam : this.teks.banyakJam.replace(':count', jam);
+                    const teksCourt = court === 1 ? this.teks.satuCourt : this.teks.banyakCourt.replace(':count', court);
 
-                    return this.nama[this.court] + ' · ' + jumlah + ' · ' + this.rentang();
+                    return teksJam + ' · ' + teksCourt;
                 },
 
                 rupiah(angka) {

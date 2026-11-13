@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Arena;
 use App\Models\Booking;
 use App\Models\BookingSlot;
 use App\Models\JenisLapangan;
@@ -10,41 +11,45 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use App\Models\Arena;
 
 class BookingTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Lapangan $lapangan;
+    private Arena $arena;
+    private Lapangan $lapangan;   // Court 1, Rp 100.000 / jam
+    private Lapangan $lapangan2;  // Court 2, Rp 150.000 / jam
     private string $besok;
 
-        protected function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
 
         $jenis = JenisLapangan::create(['nama' => 'Futsal']);
 
-        $arena = Arena::create([
+        $this->arena = Arena::create([
             'jenis_lapangan_id' => $jenis->id,
             'nama' => 'Arena Tes',
             'alamat' => 'Jl. Tes No. 1',
         ]);
 
-        $this->lapangan = $arena->lapangan()->create([
-            'nama' => 'Court 1',
-            'harga_per_jam' => 100000,
-        ]);
+        $this->lapangan = $this->arena->lapangan()->create(['nama' => 'Court 1', 'harga_per_jam' => 100000]);
+        $this->lapangan2 = $this->arena->lapangan()->create(['nama' => 'Court 2', 'harga_per_jam' => 150000]);
 
         $this->besok = today()->addDay()->toDateString();
     }
 
-    private function dataBooking(array $jam): array
+    // Data form booking. $pilihan: [court_id => [jam, ...]]. Kalau berupa daftar jam saja, dipakai untuk Court 1
+    private function dataBooking(array $pilihan): array
     {
+        if (array_is_list($pilihan)) {
+            $pilihan = [$this->lapangan->id => $pilihan];
+        }
+
         return [
-            'lapangan_id' => $this->lapangan->id,
+            'arena_id' => $this->arena->id,
             'tanggal' => $this->besok,
-            'jam' => $jam,
+            'pilihan' => $pilihan,
         ];
     }
 
@@ -73,17 +78,65 @@ class BookingTest extends TestCase
         $this->assertSame(100000, Booking::first()->total_harga);
     }
 
-       public function test_jam_boleh_tidak_berurutan(): void
+    public function test_jam_boleh_tidak_berurutan(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)->post(route('booking.store'), $this->dataBooking([10, 11, 19]));
 
         $booking = Booking::first();
-        $this->assertSame('10:00–12:00, 19:00–20:00', $booking->rentang_jam);
+        $this->assertSame('Court 1 · 10:00–12:00, 19:00–20:00', $booking->rentang_jam);
         $this->assertSame(300000, $booking->total_harga);
         $this->assertSame(3, BookingSlot::count());
     }
+
+    public function test_satu_booking_bisa_beberapa_court(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('booking.store'), $this->dataBooking([
+            $this->lapangan->id => [10, 11],
+            $this->lapangan2->id => [19],
+        ]));
+
+        $booking = Booking::first();
+        $this->assertSame($this->arena->id, $booking->arena_id);
+        $this->assertSame('Court 1 · 10:00–12:00; Court 2 · 19:00–20:00', $booking->rentang_jam);
+        $this->assertSame(2 * 100000 + 150000, $booking->total_harga);
+        $this->assertSame(3, BookingSlot::count());
+        $this->assertSame(150000, BookingSlot::where('lapangan_id', $this->lapangan2->id)->first()->harga);
+    }
+
+    public function test_harga_booking_tidak_berubah_saat_admin_mengubah_harga_court(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->post(route('booking.store'), $this->dataBooking([19]));
+
+        $this->lapangan->update(['harga_per_jam' => 999000]);
+
+        $this->assertSame(100000, Booking::first()->total_harga);
+        $this->assertSame(100000, BookingSlot::first()->harga);
+    }
+
+    public function test_court_dari_venue_lain_ditolak(): void
+    {
+        $user = User::factory()->create();
+
+        $venueLain = Arena::create([
+            'jenis_lapangan_id' => $this->arena->jenis_lapangan_id,
+            'nama' => 'Venue Lain',
+            'alamat' => 'Jl. Lain No. 2',
+        ]);
+        $courtLain = $venueLain->lapangan()->create(['nama' => 'Court 1', 'harga_per_jam' => 1000]);
+
+        // Venue di form: Arena Tes, tapi court-nya milik Venue Lain
+        $this->actingAs($user)
+            ->post(route('booking.store'), $this->dataBooking([$courtLain->id => [19]]))
+            ->assertStatus(422);
+
+        $this->assertSame(0, Booking::count());
+    }
+
     public function test_maksimal_dua_booking_belum_dibayar(): void
     {
         $user = User::factory()->create();
@@ -110,16 +163,23 @@ class BookingTest extends TestCase
         // Andi mencoba jam 20-21: jam 20 bentrok dengan Budi
         $response = $this->actingAs($andi)->post(route('booking.store'), $this->dataBooking([20, 21]));
 
-               $response->assertRedirect(route('lapangan.show', [
-            'arena' => $this->lapangan->arena_id,
-            'tanggal' => $this->besok,
-            'lapangan' => $this->lapangan->id,
-        ]));
+        $response->assertRedirect(route('lapangan.show', ['arena' => $this->arena->id, 'tanggal' => $this->besok]));
         $response->assertSessionHasErrors('jam');
 
         // Transaction di-rollback: booking Andi tidak tersimpan, termasuk slot jam 21 yang sebenarnya kosong
         $this->assertSame(1, Booking::count());
         $this->assertSame(2, BookingSlot::count());
+    }
+
+    public function test_jam_sama_di_court_berbeda_boleh(): void
+    {
+        $budi = User::factory()->create();
+        $andi = User::factory()->create();
+
+        $this->actingAs($budi)->post(route('booking.store'), $this->dataBooking([$this->lapangan->id => [19]]));
+        $this->actingAs($andi)->post(route('booking.store'), $this->dataBooking([$this->lapangan2->id => [19]]));
+
+        $this->assertSame(2, Booking::count());
     }
 
     public function test_database_menolak_slot_ganda(): void
@@ -128,10 +188,11 @@ class BookingTest extends TestCase
 
         $booking = Booking::create([
             'user_id' => $user->id,
-            'lapangan_id' => $this->lapangan->id,
+            'arena_id' => $this->arena->id,
             'tanggal' => $this->besok,
             'jam_mulai' => '19:00',
             'jam_selesai' => '20:00',
+            'rentang_jam' => 'Court 1 · 19:00–20:00',
             'total_harga' => 100000,
             'status' => 'dikonfirmasi',
         ]);
@@ -141,6 +202,7 @@ class BookingTest extends TestCase
             'lapangan_id' => $this->lapangan->id,
             'tanggal' => $this->besok,
             'jam' => 19,
+            'harga' => 100000,
         ];
 
         BookingSlot::create($slot);

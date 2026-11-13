@@ -19,7 +19,7 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id',
-        'lapangan_id',
+        'arena_id',
         'tanggal',
         'jam_mulai',
         'jam_selesai',
@@ -35,9 +35,9 @@ class Booking extends Model
     {
         return [
             'tanggal' => 'date',
-            'total_harga' => 'integer',
             'batas_bayar' => 'datetime',
             'dibayar_at' => 'datetime',
+            'total_harga' => 'integer',
         ];
     }
 
@@ -46,9 +46,9 @@ class Booking extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function lapangan(): BelongsTo
+    public function arena(): BelongsTo
     {
-        return $this->belongsTo(Lapangan::class);
+        return $this->belongsTo(Arena::class);
     }
 
     public function slots(): HasMany
@@ -61,50 +61,75 @@ class Booking extends Model
         return $this->status === 'menunggu_pembayaran';
     }
 
-    // Teks rentang jam untuk ditampilkan, misalnya "10:00–12:00, 19:00–20:00"
+    public function kode(): string
+    {
+        return 'QC-' . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+    }
+
+    // Ringkasan satu baris, contoh: "Court 1 · 10:00–12:00; Court 3 · 19:00–20:00"
     public function rentangJam(): string
     {
-        return $this->rentang_jam
-            ?? substr($this->jam_mulai, 0, 5) . '–' . substr($this->jam_selesai, 0, 5);
+        return (string) $this->rentang_jam;
     }
 
-    // Menyusun daftar jam menjadi teks rentang. Contoh: [10, 11, 19] → "10:00–12:00, 19:00–20:00"
+    // Ringkasan per court, satu court per baris
+    public function rincianJadwal(): array
+    {
+        return array_values(array_filter(explode('; ', (string) $this->rentang_jam)));
+    }
+
+    // [10, 11, 19] → "10:00–12:00, 19:00–20:00"
     public static function susunRentang(array $daftarJam): string
     {
+        $daftarJam = array_map('intval', $daftarJam);
         sort($daftarJam);
 
-        $rentang = [];
-        $mulai = $akhir = $daftarJam[0];
+        $hasil = [];
+        $mulai = $akhir = null;
 
-        foreach (array_slice($daftarJam, 1) as $jam) {
-            if ($jam === $akhir + 1) {
+        foreach ($daftarJam as $jam) {
+            if ($mulai !== null && $jam === $akhir + 1) {
                 $akhir = $jam;
-            } else {
-                $rentang[] = sprintf('%02d:00–%02d:00', $mulai, $akhir + 1);
-                $mulai = $akhir = $jam;
+                continue;
             }
+
+            if ($mulai !== null) {
+                $hasil[] = sprintf('%02d:00–%02d:00', $mulai, $akhir + 1);
+            }
+
+            $mulai = $akhir = $jam;
         }
 
-        $rentang[] = sprintf('%02d:00–%02d:00', $mulai, $akhir + 1);
+        if ($mulai !== null) {
+            $hasil[] = sprintf('%02d:00–%02d:00', $mulai, $akhir + 1);
+        }
 
-        return implode(', ', $rentang);
+        return implode(', ', $hasil);
     }
 
-    // Ubah booking yang lewat batas bayar menjadi kedaluwarsa, lalu buka kembali jadwalnya.
+    // [['nama' => 'Court 1', 'jam' => [10, 11]], ...] → "Court 1 · 10:00–12:00; Court 3 · 19:00–20:00"
+    public static function susunRincian(array $daftarCourt): string
+    {
+        return collect($daftarCourt)
+            ->map(fn ($court) => $court['nama'] . ' · ' . self::susunRentang($court['jam']))
+            ->implode('; ');
+    }
+
+    // Booking yang lewat batas bayar: status jadi kedaluwarsa dan jadwalnya dilepas
     public static function bersihkanKedaluwarsa(): void
     {
         DB::transaction(function () {
-            $ids = static::where('status', 'menunggu_pembayaran')
+            $idKedaluwarsa = static::where('status', 'menunggu_pembayaran')
                 ->where('batas_bayar', '<', now())
                 ->lockForUpdate()
                 ->pluck('id');
 
-            if ($ids->isEmpty()) {
+            if ($idKedaluwarsa->isEmpty()) {
                 return;
             }
 
-            static::whereIn('id', $ids)->update(['status' => 'kedaluwarsa']);
-            BookingSlot::whereIn('booking_id', $ids)->delete();
+            static::whereIn('id', $idKedaluwarsa)->update(['status' => 'kedaluwarsa']);
+            BookingSlot::whereIn('booking_id', $idKedaluwarsa)->delete();
         });
     }
 }

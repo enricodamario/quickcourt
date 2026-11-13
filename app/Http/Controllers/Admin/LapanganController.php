@@ -49,7 +49,7 @@ class LapanganController extends Controller
     // Hapus court yang belum pernah dibooking
     public function destroy(Lapangan $lapangan)
     {
-        if ($lapangan->bookings()->exists()) {
+        if ($lapangan->slots()->exists()) {
             return redirect()->route('admin.arena.show', $lapangan->arena_id)
                 ->with('error', __("This court already has bookings, so it can't be deleted. Set it to inactive instead."));
         }

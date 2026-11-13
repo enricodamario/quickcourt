@@ -7,10 +7,8 @@ use App\Models\BookingSlot;
 use App\Models\Lapangan;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
@@ -22,110 +20,135 @@ class BookingController extends Controller
         Booking::bersihkanKedaluwarsa();
 
         $tab = $request->query('tab') === 'past' ? 'past' : 'upcoming';
+        $aktif = ['menunggu_pembayaran', 'dikonfirmasi'];
 
-        $query = $request->user()->bookings()->with('lapangan.jenis');
+        $query = $request->user()->bookings()->with('arena.jenis');
 
         if ($tab === 'upcoming') {
-            // Masih aktif dan tanggalnya hari ini atau ke depan
-            $query->whereIn('status', ['menunggu_pembayaran', 'dikonfirmasi'])
-                ->where('tanggal', '>=', today()->toDateString())
+            $query->whereDate('tanggal', '>=', today())
+                ->whereIn('status', $aktif)
                 ->orderBy('tanggal')
                 ->orderBy('jam_mulai');
         } else {
-            // Sudah dibatalkan / kedaluwarsa, ATAU tanggalnya sudah lewat
-            $query->where(function ($q) {
-                $q->whereIn('status', ['dibatalkan', 'kedaluwarsa'])
-                    ->orWhere('tanggal', '<', today()->toDateString());
+            $query->where(function ($q) use ($aktif) {
+                $q->whereDate('tanggal', '<', today())
+                    ->orWhereNotIn('status', $aktif);
             })
                 ->orderByDesc('tanggal')
                 ->orderByDesc('jam_mulai');
         }
 
-        $bookings = $query->get();
+        $daftarBooking = $query->get();
 
-        return view('booking.index', compact('bookings', 'tab'));
+        return view('booking.index', compact('tab', 'daftarBooking'));
     }
 
-    // Halaman konfirmasi lama (tidak dipakai lagi oleh tampilan, tapi tetap aman)
-    public function create(Request $request)
+    // Halaman konfirmasi lama sudah tidak dipakai
+    public function create()
     {
-        Booking::bersihkanKedaluwarsa();
-
-        [$lapangan, $tanggal, $jamList] = $this->validasiPilihan($request);
-
-        $sudahTerisi = BookingSlot::where('lapangan_id', $lapangan->id)
-            ->where('tanggal', $tanggal->toDateString())
-            ->whereIn('jam', $jamList)
-            ->exists();
-
-        if ($sudahTerisi) {
-            throw ValidationException::withMessages([
-                'jam' => __('Sorry, someone just booked that time. Please pick another one.'),
-            ]);
-        }
-
-        $totalHarga = $lapangan->harga_per_jam * count($jamList);
-
-        return view('booking.konfirmasi', compact('lapangan', 'tanggal', 'jamList', 'totalHarga'));
+        return redirect()->route('lapangan.index');
     }
 
-    // Membuat booking dan menahan jadwal selama batas waktu pembayaran
+    // Membuat booking: satu venue, boleh beberapa court, jam boleh tidak berurutan
     public function store(Request $request)
     {
         Booking::bersihkanKedaluwarsa();
 
-        [$lapangan, $tanggal, $jamList] = $this->validasiPilihan($request);
+        $data = $request->validate([
+            'arena_id' => ['required', 'integer', Rule::exists('arena', 'id')->where('status', 'aktif')],
+            'tanggal' => [
+                'required', 'date_format:Y-m-d', 'after_or_equal:today',
+                'before_or_equal:' . today()->addDays(JadwalController::HARI_KE_DEPAN - 1)->toDateString(),
+            ],
+            'pilihan' => ['required', 'array'],
+            'pilihan.*' => ['array'],
+            'pilihan.*.*' => ['integer', 'between:' . Lapangan::JAM_BUKA . ',' . (Lapangan::JAM_TUTUP - 1)],
+        ], [
+            'pilihan.required' => __('Pick at least one hour.'),
+        ]);
 
-        $belumBayar = $request->user()->bookings()
-            ->where('status', 'menunggu_pembayaran')
-            ->count();
+        // Rapikan pilihan: [court_id => [jam, ...]], tanpa jam ganda, urut
+        $pilihan = collect($data['pilihan'])
+            ->map(fn ($daftarJam) => collect($daftarJam)->map(fn ($jam) => (int) $jam)->unique()->sort()->values()->all())
+            ->filter(fn ($daftarJam) => count($daftarJam) > 0)
+            ->sortKeys();
+
+        if ($pilihan->isEmpty()) {
+            return back()->withErrors(['jam' => __('Pick at least one hour.')]);
+        }
+
+        // Semua court harus milik venue ini dan masih aktif
+        $daftarCourt = Lapangan::where('arena_id', $data['arena_id'])
+            ->where('status', 'aktif')
+            ->whereIn('id', $pilihan->keys())
+            ->get()
+            ->keyBy('id');
+
+        abort_if($daftarCourt->count() !== $pilihan->count(), 422);
+
+        // Jam yang sudah lewat tidak boleh dipilih
+        if ($data['tanggal'] === today()->toDateString()) {
+            $jamTerawal = $pilihan->flatten()->min();
+
+            if ($jamTerawal <= now()->hour) {
+                return back()->withErrors(['jam' => __('The hour you picked has already passed.')]);
+            }
+        }
+
+        $belumBayar = $request->user()->bookings()->where('status', 'menunggu_pembayaran')->count();
 
         if ($belumBayar >= self::MAKS_BELUM_BAYAR) {
-            throw ValidationException::withMessages([
-                'jam' => __('You still have an unpaid booking. Pay or cancel it before making a new one.'),
-            ]);
+            return back()->withErrors(['jam' => __('You still have an unpaid booking. Pay or cancel it before making a new one.')]);
         }
 
         try {
-            $booking = DB::transaction(function () use ($request, $lapangan, $tanggal, $jamList) {
-                $booking = Booking::create([
-                    'user_id' => $request->user()->id,
-                    'lapangan_id' => $lapangan->id,
-                    'tanggal' => $tanggal->toDateString(),
-                    'jam_mulai' => sprintf('%02d:00', $jamList[0]),
-                    'jam_selesai' => sprintf('%02d:00', $jamList[count($jamList) - 1] + 1),
-                    'rentang_jam' => Booking::susunRentang($jamList),
-                    'total_harga' => $lapangan->harga_per_jam * count($jamList),
+            $booking = DB::transaction(function () use ($request, $data, $pilihan, $daftarCourt) {
+                $semuaJam = $pilihan->flatten();
+                $rincian = [];
+                $total = 0;
+
+                // Harga dihitung di server dari harga tiap court, bukan dari form
+                foreach ($pilihan as $courtId => $daftarJam) {
+                    $court = $daftarCourt[$courtId];
+                    $total += count($daftarJam) * $court->harga_per_jam;
+                    $rincian[] = ['nama' => $court->nama, 'jam' => $daftarJam];
+                }
+
+                $booking = $request->user()->bookings()->create([
+                    'arena_id' => $data['arena_id'],
+                    'tanggal' => $data['tanggal'],
+                    'jam_mulai' => sprintf('%02d:00', $semuaJam->min()),
+                    'jam_selesai' => sprintf('%02d:00', $semuaJam->max() + 1),
+                    'rentang_jam' => Booking::susunRincian($rincian),
+                    'total_harga' => $total,
                     'status' => 'menunggu_pembayaran',
                     'batas_bayar' => now()->addMinutes(Booking::BATAS_BAYAR_MENIT),
                 ]);
 
-                foreach ($jamList as $jam) {
-                    BookingSlot::create([
-                        'booking_id' => $booking->id,
-                        'lapangan_id' => $lapangan->id,
-                        'tanggal' => $tanggal->toDateString(),
-                        'jam' => $jam,
-                    ]);
+                // Satu baris per court per jam. Unique constraint di tabel ini yang mencegah double booking
+                foreach ($pilihan as $courtId => $daftarJam) {
+                    foreach ($daftarJam as $jam) {
+                        $booking->slots()->create([
+                            'lapangan_id' => $courtId,
+                            'tanggal' => $data['tanggal'],
+                            'jam' => $jam,
+                            'harga' => $daftarCourt[$courtId]->harga_per_jam,
+                        ]);
+                    }
                 }
 
                 return $booking;
             });
-        } 
-        catch (UniqueConstraintViolationException $e) {
-           return redirect()
-                ->route('lapangan.show', [
-                    'arena' => Lapangan::findOrFail($request->input('lapangan_id'))->arena_id,
-                    'tanggal' => $request->input('tanggal'),
-                    'lapangan' => $request->input('lapangan_id'),
-                ])
+        } catch (UniqueConstraintViolationException) {
+            return redirect()
+                ->route('lapangan.show', ['arena' => $data['arena_id'], 'tanggal' => $data['tanggal']])
                 ->withErrors(['jam' => __('Sorry, someone just booked that time. Please pick another one.')]);
         }
 
         return redirect()->route('booking.bayar', $booking);
     }
 
-    // Halaman pembayaran (simulasi)
+    // Halaman pembayaran
     public function bayar(Request $request, Booking $booking)
     {
         abort_if($booking->user_id !== $request->user()->id, 403);
@@ -138,13 +161,12 @@ class BookingController extends Controller
                 ->with('error', __('This booking is not awaiting payment.'));
         }
 
-        $booking->load('lapangan');
-        $sisaDetik = max(0, (int) now()->diffInSeconds($booking->batas_bayar, false));
+        $booking->load('arena.jenis');
 
-        return view('booking.bayar', compact('booking', 'sisaDetik'));
+        return view('booking.bayar', compact('booking'));
     }
 
-    // Memproses pembayaran (simulasi): langsung dianggap berhasil
+    // Simulasi pembayaran
     public function prosesBayar(Request $request, Booking $booking)
     {
         abort_if($booking->user_id !== $request->user()->id, 403);
@@ -155,10 +177,12 @@ class BookingController extends Controller
             'metode_bayar.required' => __('Choose a payment method.'),
         ]);
 
-        // Update bersyarat: hanya berhasil kalau masih menunggu pembayaran DAN belum lewat batas waktu.
+        Booking::bersihkanKedaluwarsa();
+
+        // Update bersyarat: hanya berhasil kalau statusnya masih menunggu dan belum lewat batas
         $berhasil = Booking::whereKey($booking->id)
             ->where('status', 'menunggu_pembayaran')
-            ->where('batas_bayar', '>=', now())
+            ->where('batas_bayar', '>', now())
             ->update([
                 'status' => 'dikonfirmasi',
                 'metode_bayar' => $data['metode_bayar'],
@@ -166,8 +190,6 @@ class BookingController extends Controller
             ]);
 
         if (! $berhasil) {
-            Booking::bersihkanKedaluwarsa();
-
             return redirect()->route('booking.index')
                 ->with('error', __('Payment failed because the time ran out or the booking is no longer active.'));
         }
@@ -176,7 +198,7 @@ class BookingController extends Controller
             ->with('success', __('Payment successful. Your booking is confirmed.'));
     }
 
-    // Membatalkan booking yang belum dibayar
+    // Customer membatalkan booking yang belum dibayar
     public function batal(Request $request, Booking $booking)
     {
         abort_if($booking->user_id !== $request->user()->id, 403);
@@ -190,7 +212,7 @@ class BookingController extends Controller
                 BookingSlot::where('booking_id', $booking->id)->delete();
             }
 
-            return $diubah;
+            return $diubah > 0;
         });
 
         if (! $berhasil) {
@@ -198,35 +220,7 @@ class BookingController extends Controller
                 ->with('error', __("This booking can't be cancelled."));
         }
 
-        return redirect()->route('booking.index')
+        return redirect()->route('booking.index', ['tab' => 'past'])
             ->with('success', __('Booking cancelled.'));
-    }
-
-    // Validasi pilihan lapangan, tanggal, dan jam. Dipakai oleh create() dan store().
-    private function validasiPilihan(Request $request): array
-    {
-        $hariTerakhir = today()->addDays(JadwalController::HARI_KE_DEPAN - 1)->toDateString();
-
-        $data = $request->validate([
-            'lapangan_id' => ['required', 'integer', Rule::exists('lapangan', 'id')->where('status', 'aktif')],
-            'tanggal' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', 'before_or_equal:' . $hariTerakhir],
-            'jam' => ['required', 'array', 'min:1'],
-            'jam.*' => ['integer', 'distinct', 'min:' . Lapangan::JAM_BUKA, 'max:' . (Lapangan::JAM_TUTUP - 1)],
-        ], [
-            'jam.required' => __('Pick at least one hour.'),
-        ]);
-
-        $jamList = collect($data['jam'])->map(fn ($jam) => (int) $jam)->sort()->values()->all();
-
-        $tanggal = Carbon::parse($data['tanggal']);
-
-        // Jam sudah diurutkan, jadi cukup cek jam paling awal
-        if ($tanggal->isToday() && $jamList[0] <= now()->hour) {
-            throw ValidationException::withMessages([
-                'jam' => __('The hour you picked has already passed.'),
-            ]);
-        }
-
-        return [Lapangan::findOrFail($data['lapangan_id']), $tanggal, $jamList];
     }
 }

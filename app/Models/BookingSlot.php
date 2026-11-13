@@ -9,23 +9,23 @@ class BookingSlot extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = [
-        'booking_id',
-        'lapangan_id',
-        'tanggal',
-        'jam',
-    ];
+    protected $fillable = ['booking_id', 'lapangan_id', 'tanggal', 'jam', 'harga'];
 
     protected function casts(): array
     {
         return [
-            'tanggal' => 'date',
             'jam' => 'integer',
+            'harga' => 'integer',
         ];
     }
 
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function lapangan(): BelongsTo
+    {
+        return $this->belongsTo(Lapangan::class);
     }
 }
