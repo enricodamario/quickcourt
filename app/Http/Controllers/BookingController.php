@@ -111,9 +111,14 @@ class BookingController extends Controller
 
                 return $booking;
             });
-        } catch (UniqueConstraintViolationException $e) {
-            return redirect()
-                ->route('lapangan.show', ['lapangan' => $lapangan, 'tanggal' => $tanggal->toDateString()])
+        } 
+        catch (UniqueConstraintViolationException $e) {
+           return redirect()
+                ->route('lapangan.show', [
+                    'arena' => Lapangan::findOrFail($request->input('lapangan_id'))->arena_id,
+                    'tanggal' => $request->input('tanggal'),
+                    'lapangan' => $request->input('lapangan_id'),
+                ])
                 ->withErrors(['jam' => __('Sorry, someone just booked that time. Please pick another one.')]);
         }
 

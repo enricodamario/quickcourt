@@ -18,7 +18,7 @@
     $menu = $isAdmin
         ? [
             ['admin.dashboard', 'admin.dashboard', __('Dashboard')],
-            ['admin.lapangan.index', 'admin.lapangan.*', __('Courts')],
+            ['admin.arena.index', 'admin.arena.*', __('Venues')],
             ['admin.jenis-lapangan.index', 'admin.jenis-lapangan.*', __('Court types')],
             ['admin.booking.index', 'admin.booking.*', __('Bookings')],
         ]

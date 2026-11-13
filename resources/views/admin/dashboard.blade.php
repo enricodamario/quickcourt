@@ -34,7 +34,7 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
-                <a href="{{ route('admin.lapangan.index') }}"
+                <a href="{{ route('admin.arena.index') }}"
                    class="inline-flex items-center px-4 py-2 bg-gray-800 rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
                     Kelola Lapangan
                 </a>

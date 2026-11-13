@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ArenaController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\JenisLapanganController;
 use App\Http\Controllers\Admin\LapanganController;
@@ -71,7 +72,11 @@ Route::middleware(['auth', 'admin'])
             ]);
         })->name('dashboard');
 
-        Route::resource('lapangan', LapanganController::class)->except('show');
+        // Venue (arena) dan court di dalamnya
+        Route::resource('arena', ArenaController::class);
+        Route::post('/arena/{arena}/lapangan', [LapanganController::class, 'store'])->name('lapangan.store');
+        Route::patch('/lapangan/{lapangan}', [LapanganController::class, 'update'])->name('lapangan.update');
+        Route::delete('/lapangan/{lapangan}', [LapanganController::class, 'destroy'])->name('lapangan.destroy');
 
         Route::resource('jenis-lapangan', JenisLapanganController::class)
             ->parameters(['jenis-lapangan' => 'jenisLapangan'])
@@ -84,7 +89,7 @@ Route::middleware(['auth', 'admin'])
 // Halaman customer: wajib login.
 Route::middleware('auth')->group(function () {
     Route::get('/lapangan', [JadwalController::class, 'index'])->name('lapangan.index');
-    Route::get('/lapangan/{lapangan}', [JadwalController::class, 'show'])->name('lapangan.show');
+    Route::get('/lapangan/{arena}', [JadwalController::class, 'show'])->name('lapangan.show');
 
     Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
     Route::get('/booking/konfirmasi', [BookingController::class, 'create'])->name('booking.create');

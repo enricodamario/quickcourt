@@ -110,7 +110,11 @@ class BookingTest extends TestCase
         // Andi mencoba jam 20-21: jam 20 bentrok dengan Budi
         $response = $this->actingAs($andi)->post(route('booking.store'), $this->dataBooking([20, 21]));
 
-        $response->assertRedirect(route('lapangan.show', ['lapangan' => $this->lapangan, 'tanggal' => $this->besok]));
+               $response->assertRedirect(route('lapangan.show', [
+            'arena' => $this->lapangan->arena_id,
+            'tanggal' => $this->besok,
+            'lapangan' => $this->lapangan->id,
+        ]));
         $response->assertSessionHasErrors('jam');
 
         // Transaction di-rollback: booking Andi tidak tersimpan, termasuk slot jam 21 yang sebenarnya kosong

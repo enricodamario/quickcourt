@@ -24,10 +24,9 @@ class Arena extends Model
         return $this->belongsTo(JenisLapangan::class, 'jenis_lapangan_id');
     }
 
-    // Semua court di arena ini, diurutkan sesuai urutan dibuat (Court 1, Court 2, ...)
-    public function lapangan(): HasMany
+       public function lapangan(): HasMany
     {
-        return $this->hasMany(Lapangan::class)->orderBy('id');
+        return $this->hasMany(Lapangan::class);
     }
 
     public function fotoUrl(): ?string

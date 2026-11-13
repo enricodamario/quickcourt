@@ -57,7 +57,7 @@
                 </table>
             </div>
 
-            <a href="{{ route('admin.lapangan.index') }}" class="inline-block text-gray-600 hover:underline">&larr; Kembali ke Kelola Lapangan</a>
+            <a href="{{ route('admin.arena.index') }}" class="inline-block text-gray-600 hover:underline">&larr; Kembali ke Kelola Lapangan</a>
         </div>
     </div>
 </x-app-layout>
